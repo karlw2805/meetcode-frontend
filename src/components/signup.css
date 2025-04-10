@@ -1,0 +1,90 @@
+/* Container styling */
+.signup-container {
+  width: 350px;
+  margin: auto;
+  margin-top: 50px;
+  padding: 20px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  color: #333;
+}
+
+/* Heading */
+.signup-container h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Form styling */
+.signup-form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Input field styling */
+.input-group {
+  text-align: left;
+  margin-bottom: 15px;
+}
+
+.input-group label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.input-group input,
+.input-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Button styling */
+.button-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-button,
+.login-button {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+.signup-button {
+  background: #28a745;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.login-button {
+  background: #007bff;
+  color: white;
+}
+
+.signup-button:hover {
+  background: #218838;
+}
+
+.login-button:hover {
+  background: #0056b3;
+}
