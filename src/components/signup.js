@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./signup.css";
+const BASE_URL = process.env.REACT_APP_API_URL; // Ensure this is set in your .env file
+
 const SignUp = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -16,7 +18,7 @@ const SignUp = () => {
       return;
     }
 
-    const response = await fetch("http://localhost:8000/signup", {
+    const response = await fetch(`${BASE_URL}/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

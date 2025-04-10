@@ -1,89 +1,109 @@
-/* Container styling */
-.login-container {
-  width: 350px;
-  margin: auto;
-  margin-top: 50px;
+/* Global font and reset */
+.login-wrapper {
+  display: flex;
+  height: 100vh;
+  background-color: #1e1e1e;
+}
+
+.login-left,
+.login-right {
+  flex: 1;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+
+* {
+  box-sizing: border-box;
+  font-family: 'Press Start 2P', monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #1e1e1e;
+  color: white;
+}
+
+/* Container layout */
+.login-page {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Left form section */
+.login-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 40px;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+}
+
+.login-left h1 {
+  font-size: 24px;
+  color: white;
+}
+
+.login-left input {
+  background: transparent;
+  border: 2px solid #00ffae;
+  color: #00ffae;
+  padding: 12px;
+  width: 280px;
+  font-size: 12px;
+  outline: none;
+}
+
+.login-btn {
+  background-color: #00ffae;
+  border: none;
+  padding: 12px 30px;
+  font-size: 12px;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 8px;
+  width: 180px;
   text-align: center;
 }
 
-/* Heading */
-.login-container h2 {
-  margin-bottom: 20px;
-  color: #333;
+.signup-text {
+  color: white;
+  font-size: 10px;
 }
 
-/* Form styling */
-.login-form {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Input field styling */
-.input-group {
-  text-align: left;
-  margin-bottom: 15px;
-}
-
-.input-group label {
-  font-weight: bold;
-  display: block;
-  margin-bottom: 5px;
-  color: #555;
-}
-
-.input-group input,
-.input-group select {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 14px;
-}
-
-.input-group input:focus,
-.input-group select:focus {
-  border-color: #007bff;
-  outline: none;
-  box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.5);
-}
-
-/* Button styling */
-.button-container {
-  display: flex;
-  flex-direction: column;
-}
-
-.login-button,
-.signup-button {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  border: none;
-  border-radius: 5px;
+.signup-link {
+  color: #00ffae;
+  margin-left: 5px;
   cursor: pointer;
-  transition: background 0.3s ease-in-out;
 }
 
-.login-button {
-  background: #007bff;
-  color: white;
-  margin-bottom: 10px;
+/* Right illustration section */
+.login-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.signup-button {
-  background: #28a745;
-  color: white;
+.login-right img {
+  width: 300px;
+  max-width: 90%;
 }
 
-.login-button:hover {
-  background: #0056b3;
-}
-
-.signup-button:hover {
-  background: #218838;
+.logo {
+  margin-top: 20px;
+  text-align: center;
+  color: #00ffae;
+  font-size: 16px;
 }

@@ -48,7 +48,7 @@ function App() {
         setText,
       }}
     >
-      <Navbar title="JEE - Tests" mode={mode} setMode={setMode} />
+      <Navbar title="CodePaglus" mode={mode} setMode={setMode} />
       <div
         className="container-fluid"
         style={{
