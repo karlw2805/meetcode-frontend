@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router-dom";
+import "./Navbar.css"; // Assuming you have a CSS file for styling
+import { Link, useLocation } from "react-router-dom";
 
 const Navbar = (props) => {
   const role = localStorage.getItem("role");
@@ -10,15 +11,15 @@ const Navbar = (props) => {
     localStorage.removeItem("role");
     window.location.href = "/login";
   };
+  const location = useLocation();
+  const hideLogout =
+    location.pathname === "/login" || location.pathname === "/signin";
+
   return (
     <div>
       <nav
-        className={`navbar navbar-expand-lg ${
-          props.mode === "dark"
-            ? "bg-dark navbar-dark"
-            : "bg-light navbar-light"
-        }`}
-        style={{ border: "1px solid white" }}
+        className="navbar navbar-expand-lg navbar-dark"
+        style={{ backgroundColor: "#1e1e1e" }}
       >
         <div className="container-fluid">
           <div className="navbar-brand">{props.title}</div>
@@ -32,31 +33,18 @@ const Navbar = (props) => {
                 >
                   Home
                 </Link>
-                {/* <Link className="nav-link active" aria-current="page" to="/">
-                  Home
-                </Link> */}
               </li>
               <li className="nav-item">
-                <Link className="nav-link" to="/about">
+                {/* <Link className="nav-link" to="/about">
                   About
-                </Link>
+                </Link> */}
               </li>
-              <button
-                className="btn btn-primary"
-                style={{
-                  color: "white",
-                  height: "38px",
-                  width: "100px",
-                  marginLeft: "1000px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                onClick={handleLogout}
-              >
+            </ul>
+            {!hideLogout && (
+              <button className="login-btn" onClick={handleLogout}>
                 Logout
               </button>
-            </ul>
+            )}
           </div>
         </div>
       </nav>

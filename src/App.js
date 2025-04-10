@@ -48,7 +48,6 @@ function App() {
         setText,
       }}
     >
-      <Navbar title="CodePaglus" mode={mode} setMode={setMode} />
       <div
         className="container-fluid"
         style={{
@@ -63,6 +62,7 @@ function App() {
           position: "relative",
         }}
       >
+        <Navbar title="Code Editor" mode={mode} />
         <Routes>
           <Route
             path="/"
