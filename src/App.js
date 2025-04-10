@@ -5,6 +5,8 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import { createContext } from "react";
 import Login from "./components/login.js";
 import SignUp from "./components/signup.js";
+import Home from "./components/Home";
+import Workspace from "./components/Workspace.js";
 
 const userContext = createContext();
 function App() {
@@ -66,13 +68,13 @@ function App() {
             path="/"
             element={
               <>
-                <h1> Hello {namee}</h1>
-                <h2>Welcome to JEE Tests</h2>
+                <Home />
               </>
             }
           />
 
           <Route path="/about" element={<About />} />
+          <Route path="/workspace/:roomcode" element={<Workspace />} />
 
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
