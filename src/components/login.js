@@ -78,9 +78,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./login.css";
-const BASE_URL = "http://10.81.78.12:8000";
+const BASE_URL = process.env.REACT_APP_API_URL;
 
 const Login = () => {
+  console.log("BASE_URL =", BASE_URL);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
@@ -95,9 +96,10 @@ const Login = () => {
       },
       body: JSON.stringify({ username, password }),
     });
-
+    
     if (response.status === 200) {
       const data = await response.json();
+      console.log("Login response data:", data);
       localStorage.setItem("authToken", data.token);
       localStorage.setItem("username", data.username);
       localStorage.setItem("role", "student");
