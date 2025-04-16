@@ -1,6 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import Editor from "@monaco-editor/react";
+import { io } from "socket.io-client";
+import debounce from "lodash.debounce";
+
 import "./workspace.css";
+
+const BASE_URL=process.env.REACT_APP_API_URL;
+const socket = io(process.env.REACT_APP_API_URL, {
+  withCredentials: true,
+});
 
 const defaultCodeTemplates = {
   javascript: `console.log("Hello from JS!");`,
@@ -9,12 +17,15 @@ const defaultCodeTemplates = {
   html: `<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n  <h1>Hello HTML</h1>\n</body>\n</html>`,
 };
 
+const repoCode = localStorage.getItem("joinedRepoCode");
+
 const Workspace = () => {
   const [activePanel, setActivePanel] = useState("files");
   const [activeFile, setActiveFile] = useState("index.html");
   const [showModal, setShowModal] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [stdin, setStdin] = useState("");
+  const [activeUsers, setActiveUsers] = useState([]);
   const [newFileLang, setNewFileLang] = useState("javascript");
   const [chatMessages, setChatMessages] = useState([
     "Hello chat !!",
@@ -25,7 +36,6 @@ const Workspace = () => {
   const [files, setFiles] = useState({});
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-
 
   const getLanguageFromFilename = (filename) => {
     if (filename.endsWith(".js")) return "javascript";
@@ -46,11 +56,39 @@ const Workspace = () => {
     else if (newFileLang === "html") extension = ".html";
 
     const fullFileName = newFileName + extension;
-    setFiles({ ...files, [fullFileName]: defaultCodeTemplates[newFileLang] });
+    const content = defaultCodeTemplates[newFileLang];
+
+    const updated = { ...files, [fullFileName]: content };
+    setFiles(updated);
     setActiveFile(fullFileName);
     setShowModal(false);
     setNewFileName("");
     setNewFileLang("javascript");
+
+    // 🔄 Real-time file broadcast
+    socket.emit("file-created", {
+      repoCode,
+      file: {
+        name: fullFileName,
+        path: fullFileName,
+        content: content,
+      },
+    });
+
+    // Save to DB
+    const token = localStorage.getItem("authToken");
+    fetch(`${BASE_URL}/api/files/${repoCode}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        filename: fullFileName,
+        content,
+      }),
+    });
+
   };
 
   const handleSendMessage = () => {
@@ -76,7 +114,7 @@ const Workspace = () => {
     try {
       const token = localStorage.getItem("authToken");
 
-      const res = await fetch("http://10.81.66.115:8000/api/run-code", {
+      const res = await fetch(`${BASE_URL}/api/run-code`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -118,6 +156,16 @@ const Workspace = () => {
           const remaining = Object.keys(updated);
           setActiveFile(remaining.length ? remaining[0] : "");
         }
+
+        const token = localStorage.getItem("authToken");
+      fetch(`${BASE_URL}/api/files/${repoCode}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ filename }),
+      });
 
         return updated;
       });
@@ -179,6 +227,19 @@ const Workspace = () => {
       );
     }
 
+    if (activePanel === "users") {
+      return (
+        <div className="users-panel">
+          <h3>Active Users</h3>
+          <ul className="user-list">
+            {activeUsers.map((user, idx) => (
+              <li key={idx}>👤 {user.name}</li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
     return (
       <div>
         <h3>Your Files</h3>
@@ -222,6 +283,88 @@ const Workspace = () => {
       </div>
     );
   };
+  
+  const handleEditorChange = debounce((value) => {
+    const updatedFiles = { ...files, [activeFile]: value };
+    setFiles(updatedFiles);
+  
+    socket.emit("code-change", {
+      repoCode,
+      filename: activeFile,
+      code: value,
+    });
+  
+    const token = localStorage.getItem("authToken");
+  
+    fetch(`${BASE_URL}/api/files/${repoCode}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        filename: activeFile,
+        content: value,
+      }),
+    });
+  }, 500); // debounced to avoid spamming server
+  
+
+
+  const currentRoomRef = useRef(null); // track the current joined room
+  useEffect(() => {
+    if (!repoCode) return;
+  
+    const username = localStorage.getItem("username") || "Guest";
+  
+    if (currentRoomRef.current && currentRoomRef.current !== repoCode) {
+      socket.emit("leave-room", currentRoomRef.current);
+    }
+  
+    currentRoomRef.current = repoCode;
+    socket.emit("join-room", repoCode, username);
+  
+    // 🆕 Fetch files from server on mount
+    const token = localStorage.getItem("authToken");
+    fetch(`${BASE_URL}/api/files/${repoCode}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setFiles(data.files || {}))
+      .catch((err) => console.error("Error loading files:", err));
+
+    
+  
+    socket.on("code-update", ({ filename, code }) => {
+      setFiles((prevFiles) => {
+        if (prevFiles[filename] === code) return prevFiles;
+        return { ...prevFiles, [filename]: code };
+      });
+    });
+  
+    socket.on("file-created", ({ file }) => {
+      if (!file) return;
+      setFiles((prevFiles) => {
+        if (prevFiles[file.path]) return prevFiles;
+        return { ...prevFiles, [file.path]: file.content };
+      });
+    });
+  
+    socket.on("update-users", (users) => {
+      setActiveUsers(users);
+    });
+  
+    return () => {
+      socket.emit("leave-room", repoCode);
+      socket.off("code-update");
+      socket.off("file-created");
+      socket.off("update-users");
+    };
+  }, [repoCode]);
+  
+  
 
   return (
     <div className="workspace-container">
@@ -257,6 +400,7 @@ const Workspace = () => {
           <button title="Files" onClick={() => setActivePanel("files")}>🗂</button>
           <button title="Chat" onClick={() => setActivePanel("chat")}>💬</button>
           <button title="Output" onClick={() => setActivePanel("output")}>📤</button>
+          <button title="Active Users" onClick={() => setActivePanel("users")}>👥</button>
         </div>
 
         <div className="file-sidebar">
@@ -269,9 +413,7 @@ const Workspace = () => {
               <Editor
                 language={getLanguageFromFilename(activeFile)}
                 value={files[activeFile] || ""}
-                onChange={(value) =>
-                  setFiles((prev) => ({ ...prev, [activeFile]: value || "" }))
-                }
+                onChange={handleEditorChange}
                 theme="vs-dark"
                 options={{
                   fontSize: 16,

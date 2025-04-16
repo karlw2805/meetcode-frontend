@@ -46,6 +46,7 @@ const Home = () => {
       });
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem("joinedRepoCode", data.repoCode);
         navigate(`/workspace/${data.repoName}`);
       } else {
         alert("Error creating room: " + data.message);
@@ -68,6 +69,7 @@ const Home = () => {
       });
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem("joinedRepoCode", data.repoCode);
         navigate(`/workspace/${data.repoName}`);
       } else {
         alert("Error joining room: " + data.message);

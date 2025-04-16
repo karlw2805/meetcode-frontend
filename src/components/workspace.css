@@ -1,6 +1,5 @@
 /* Reset and Base */
 
-/* Add this if not present already */
 .run-controls {
   padding: 10px;
   background-color: #1e1e1e;
@@ -29,7 +28,6 @@
   background-color: #45a049;
 }
 
-/* Optional: ensure .editor-pane has room for it */
 .editor-pane {
   display: flex;
   flex-direction: column;
@@ -38,14 +36,13 @@
   min-height: 0;
 }
 
-/* Make sure the editor expands and leaves space for the controls/output */
 .editor-pane > .monaco-editor {
   flex: 1 1 auto;
   min-height: 300px;
   overflow: hidden;
 }
-.stdin-input
-{
+
+.stdin-input {
   background: #111;
   color: #0f0;
   padding: 10px;
@@ -58,6 +55,7 @@
   flex-shrink: 0;
   margin-bottom: 16px;
 }
+
 .code-output {
   background: #111;
   color: #0f0;
@@ -190,18 +188,13 @@ html {
   width: 100%;
 }
 
-/* Workspace Layout */
 .workspace-main {
   display: flex;
   flex: 1;
-  height: calc(100vh - 0px); /* Full height minus navbar (if removed) */
+  height: calc(100vh - 0px);
   overflow: hidden;
 }
-.chat-send-btn{
-  margin-bottom: 16px; /* Adds spacing below the Add File button */
-}
 
-/* Vertical Toolbar */
 .vertical-toolbar {
   width: 50px;
   background-color: #222;
@@ -227,7 +220,6 @@ html {
   transform: scale(1.1);
 }
 
-/* File Sidebar */
 .file-sidebar {
   border-right: 1px solid #444;
   border-top: 1px solid #444;
@@ -236,7 +228,7 @@ html {
   padding: 16px;
   background-color: #1e1e1e;
   color: white;
-  width: 300px; /* adjust as needed */
+  width: 300px;
   overflow: hidden;
 }
 
@@ -307,7 +299,6 @@ html {
   color: #fff;
 }
 
-/* Resizer */
 .resizer {
   width: 5px;
   cursor: col-resize;
@@ -319,7 +310,6 @@ html {
   background-color: #00ffaa;
 }
 
-/* Code Editor */
 .code-editor {
   flex: 1;
   background-color: #1e1e1e;
@@ -360,6 +350,7 @@ html {
   padding: 15px;
   height: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .chat-box h3 {
@@ -383,20 +374,13 @@ html {
   font-size: 14px;
 }
 
-.chat-box input {
-  padding: 8px;
-  border: none;
-  border-radius: 4px;
-  background-color: #333;
-  color: #fff;
-}
-
 .chat-input-row {
   display: flex;
   align-items: center;
   border-top: 1px solid #333;
   background-color: #1a1a1a;
   padding-top: 10px;
+  gap: 8px;
 }
 
 .chat-message-input {
@@ -406,7 +390,7 @@ html {
   color: #fff;
   border: none;
   font-size: 14px;
-  border-radius: 4px 0 0 4px;
+  border-radius: 4px;
   outline: none;
 }
 
@@ -418,8 +402,9 @@ html {
   font-size: 18px;
   color: #000;
   cursor: pointer;
-  border-radius: 0 4px 4px 0;
+  border-radius: 4px;
   transition: transform 0.3s ease-in-out;
+  flex-shrink: 0;
 }
 
 .chat-send-btn:hover {
