@@ -48,37 +48,35 @@ const Workspace = () => {
 
   const handleCreateFile = () => {
     if (!newFileName) return;
-
+  
     let extension = "";
     if (newFileLang === "javascript") extension = ".js";
     else if (newFileLang === "python") extension = ".py";
     else if (newFileLang === "cpp") extension = ".cpp";
     else if (newFileLang === "html") extension = ".html";
-
+  
     const fullFileName = newFileName + extension;
-    const content = defaultCodeTemplates[newFileLang];
-
+    const content = defaultCodeTemplates[newFileLang] || "";
+  
+    // Update local state
     const updated = { ...files, [fullFileName]: content };
     setFiles(updated);
     setActiveFile(fullFileName);
     setShowModal(false);
     setNewFileName("");
     setNewFileLang("javascript");
-
-    // 🔄 Real-time file broadcast
+  
+    // 🔄 Real-time file broadcast via socket
     socket.emit("file-created", {
       repoCode,
-      file: {
-        name: fullFileName,
-        path: fullFileName,
-        content: content,
-      },
+      file: fullFileName,
+      content: content,
     });
-
-    // Save to DB
+  
+    // Save to DB via API
     const token = localStorage.getItem("authToken");
     fetch(`${BASE_URL}/api/files/${repoCode}`, {
-      method: "POST",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -87,8 +85,7 @@ const Workspace = () => {
         filename: fullFileName,
         content,
       }),
-    });
-
+    }).catch(err => console.error("Error saving file:", err));
   };
 
   const handleSendMessage = () => {
@@ -148,16 +145,28 @@ const Workspace = () => {
 
   const handleDeleteFile = (filename) => {
     if (window.confirm(`Are you sure you want to delete "${filename}"?`)) {
+      // Remove from local state first
       setFiles((prevFiles) => {
         const updated = { ...prevFiles };
         delete updated[filename];
-
+        
+        // Update active file if deleted
         if (activeFile === filename) {
           const remaining = Object.keys(updated);
           setActiveFile(remaining.length ? remaining[0] : "");
         }
-
-        const token = localStorage.getItem("authToken");
+        
+        return updated;
+      });
+      
+      // Emit socket event for real-time notification to other users
+      socket.emit("file-deleted", {
+        repoCode,
+        filePath: filename
+      });
+      
+      // Also delete through REST API as a backup
+      const token = localStorage.getItem("authToken");
       fetch(`${BASE_URL}/api/files/${repoCode}`, {
         method: "DELETE",
         headers: {
@@ -165,10 +174,13 @@ const Workspace = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ filename }),
-      });
-
-        return updated;
-      });
+      })
+      .then(response => {
+        if (!response.ok) {
+          console.error("Failed to delete file via API", response.status);
+        }
+      })
+      .catch(err => console.error("Error deleting file via API:", err));
     }
   };
 
@@ -324,7 +336,7 @@ const Workspace = () => {
     currentRoomRef.current = repoCode;
     socket.emit("join-room", repoCode, username);
   
-    // 🆕 Fetch files from server on mount
+    // Load files from database on mount
     const token = localStorage.getItem("authToken");
     fetch(`${BASE_URL}/api/files/${repoCode}`, {
       headers: {
@@ -332,11 +344,21 @@ const Workspace = () => {
       },
     })
       .then((res) => res.json())
-      .then((data) => setFiles(data.files || {}))
+      .then((data) => {
+        if (data.success && data.files) {
+          setFiles(data.files);
+          // Set active file to the first file if no active file is set
+          if (!activeFile || !(activeFile in data.files)) {
+            const fileKeys = Object.keys(data.files);
+            if (fileKeys.length > 0) {
+              setActiveFile(fileKeys[0]);
+            }
+          }
+        }
+      })
       .catch((err) => console.error("Error loading files:", err));
-
-    
   
+    // Setup socket event listeners
     socket.on("code-update", ({ filename, code }) => {
       setFiles((prevFiles) => {
         if (prevFiles[filename] === code) return prevFiles;
@@ -344,11 +366,34 @@ const Workspace = () => {
       });
     });
   
-    socket.on("file-created", ({ file }) => {
-      if (!file) return;
+    socket.on("file-created", (file) => {
+      if (!file || !file.path) return;
       setFiles((prevFiles) => {
         if (prevFiles[file.path]) return prevFiles;
-        return { ...prevFiles, [file.path]: file.content };
+        return { ...prevFiles, [file.path]: file.content || "" };
+      });
+    });
+  
+    socket.on("file-deleted", ({ filePath }) => {
+      console.log(`Received file-deleted event for ${filePath}`);
+      
+      setFiles((prevFiles) => {
+        if (!prevFiles[filePath]) {
+          console.log(`File ${filePath} not found in local state, nothing to delete`);
+          return prevFiles;
+        }
+        
+        console.log(`Removing file ${filePath} from local state`);
+        const updated = { ...prevFiles };
+        delete updated[filePath];
+        
+        // Update active file if needed
+        if (activeFile === filePath) {
+          const remaining = Object.keys(updated);
+          setActiveFile(remaining.length ? remaining[0] : "");
+        }
+        
+        return updated;
       });
     });
   
@@ -356,14 +401,29 @@ const Workspace = () => {
       setActiveUsers(users);
     });
   
+    socket.on("initial-files", (filesArray) => {
+      const filesObj = {};
+      filesArray.forEach(file => {
+        filesObj[file.path] = file.content;
+      });
+      
+      setFiles(filesObj);
+      
+      // Set active file to the first file if we have files
+      if (Object.keys(filesObj).length > 0 && !activeFile) {
+        setActiveFile(Object.keys(filesObj)[0]);
+      }
+    });
+  
     return () => {
       socket.emit("leave-room", repoCode);
       socket.off("code-update");
       socket.off("file-created");
+      socket.off("file-deleted");
       socket.off("update-users");
+      socket.off("initial-files");
     };
   }, [repoCode]);
-  
   
 
   return (
