@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 import { io } from "socket.io-client";
 import debounce from "lodash.debounce";
-
 import "./workspace.css";
 
 const BASE_URL=process.env.REACT_APP_API_URL;
@@ -27,11 +26,11 @@ const Workspace = () => {
   const [stdin, setStdin] = useState("");
   const [activeUsers, setActiveUsers] = useState([]);
   const [newFileLang, setNewFileLang] = useState("javascript");
-  const [chatMessages, setChatMessages] = useState([
-    "Hello chat !!",
-    "Talk here !!",
-    "Spread love and positivity.",
-  ]);
+  // const [chatMessages, setChatMessages] = useState([
+  //   "Hello chat !!",
+  //   "Talk here !!",
+  //   "Spread love and positivity.",
+  // ]);
   const [chatInput, setChatInput] = useState("");
   const [files, setFiles] = useState({});
   const [output, setOutput] = useState("");
@@ -87,15 +86,70 @@ const Workspace = () => {
       }),
     }).catch(err => console.error("Error saving file:", err));
   };
-
+  const [chatMessages, setChatMessages] = useState([
+    { username: "System", message: "Welcome to the chat!", timestamp: new Date() }
+  ]);
+  
   const handleSendMessage = () => {
+    if (!chatInput) {
+      console.error("Chat input is undefined or null.");
+      return;
+    }
+  
     const trimmed = chatInput.trim();
     if (trimmed) {
-      setChatMessages([...chatMessages, trimmed]);
-      setChatInput("");
+      try {
+        const username = localStorage.getItem("username") || "Anonymous";
+  
+        socket.emit("send-message", {
+          repoCode,
+          message: trimmed,
+          username,
+        });
+  
+        setChatInput("");
+      } catch (error) {
+        console.error("Failed to send message:", error);
+      }
     }
   };
-
+  useEffect(() => {
+    if (!repoCode) return;
+  
+    const username = localStorage.getItem("username") || "Guest";
+  
+    if (currentRoomRef.current && currentRoomRef.current !== repoCode) {
+      socket.emit("leave-room", currentRoomRef.current);
+    }
+  
+    currentRoomRef.current = repoCode;
+    socket.emit("join-room", repoCode, username);
+  
+    // ... existing code ...
+  
+    // Chat-specific socket event listeners
+    socket.on("new-message", (message) => {
+      setChatMessages((prevMessages) => [...prevMessages, message]);
+    });
+    
+    socket.on("chat-history", (messages) => {
+      setChatMessages(messages);
+    });
+    
+    socket.on("chat-error", ({ error }) => {
+      console.error("Chat error:", error);
+      // Optionally display an error to the user
+    });
+    
+    return () => {
+      socket.emit("leave-room", repoCode);
+      // ... existing cleanup ...
+      socket.off("new-message");
+      socket.off("chat-history");
+      socket.off("chat-error");
+    };
+  }, [repoCode]);
+  
   const handleRunCode = async () => {
     const language = getLanguageFromFilename(activeFile);
     const supportedLanguages = ["python", "javascript", "cpp"];
@@ -191,7 +245,15 @@ const Workspace = () => {
           <h3>Team Chat</h3>
           <div className="chat-messages">
             {chatMessages.map((msg, idx) => (
-              <p key={idx}>{msg}</p>
+              <div key={idx} className="chat-message">
+                <span className="chat-username">{msg.username || "Anonymous"}: </span>
+                <span className="chat-text">{msg.message}</span>
+                {msg.timestamp && (
+                  <div className="chat-timestamp">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
           <div className="chat-input-row">
@@ -210,7 +272,7 @@ const Workspace = () => {
         </div>
       );
     }
-
+    
     if (activePanel === "output") {
       return (
         <div>
@@ -318,10 +380,9 @@ const Workspace = () => {
         filename: activeFile,
         content: value,
       }),
-    });
-  }, 500); // debounced to avoid spamming server
+    }).catch((err) => console.error("Failed to save code:", err));
+  }, 500);
   
-
 
   const currentRoomRef = useRef(null); // track the current joined room
   useEffect(() => {
