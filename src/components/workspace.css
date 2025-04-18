@@ -410,3 +410,64 @@ html {
 .chat-send-btn:hover {
   background-color: #00e699;
 }
+
+.ai-assistance-panel {
+  padding: 16px;
+  background-color: #1e1e1e;
+  color: white;
+  border-top: 1px solid #444;
+}
+
+.ai-chatbox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #2a2a2a;
+  padding: 10px;
+  border-radius: 6px;
+  max-height: 300px;
+}
+
+.ai-message {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.ai-message.user {
+  color: #00ffaa;
+}
+
+.ai-message.assistant {
+  color: #ffffff;
+}
+
+.ai-input {
+  width: 100%;
+  padding: 10px;
+  background-color: #2a2a2a;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: none;
+}
+
+.ai-submit-btn {
+  padding: 10px 16px;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.ai-submit-btn:hover {
+  background-color: #005fa3;
+}
