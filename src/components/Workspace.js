@@ -35,6 +35,8 @@ const Workspace = () => {
   const [files, setFiles] = useState({});
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiInput, setAiInput] = useState("");
 
   const getLanguageFromFilename = (filename) => {
     if (filename.endsWith(".js")) return "javascript";
@@ -238,6 +240,44 @@ const Workspace = () => {
     }
   };
 
+  const handleAiSubmit = async (e) => {
+    e.preventDefault();
+    if (!aiInput.trim()) return;
+
+    const userMessage = { role: "user", content: aiInput.trim() };
+    // setAiMessages("");
+    // setAiMessages((prev) => [...prev, userMessage]);
+    // setAiInput("");
+
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer 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",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "deepseek/deepseek-chat-v3-0324:free", // Replace with your chosen model
+          messages: [...aiMessages, userMessage],
+        }),
+      });
+
+      const data = await response.json();
+      if (data && data.choices && data.choices[0]) {
+        const aiResponse = {
+          role: "assistant",
+          content: data.choices[0].message.content,
+        };
+        setAiMessages((prev) => [...prev, aiResponse]);
+        setAiInput("");
+      } else {
+        console.error("Unexpected API response:", data);
+      }
+    } catch (error) {
+      console.error("Error calling OpenRouter API:", error);
+    }
+  };
+
   const renderSidebarContent = () => {
     if (activePanel === "chat") {
       return (
@@ -310,6 +350,36 @@ const Workspace = () => {
               <li key={idx}>👤 {user.name}</li>
             ))}
           </ul>
+        </div>
+      );
+    }
+
+    if (activePanel === "ai-assistance") {
+      return (
+        <div className="ai-assistance-panel">
+          <h3>AI Assistance 🤖</h3>
+          <div className="ai-chatbox">
+            <div className="ai-messages">
+              {aiMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`ai-message ${msg.role === "user" ? "user" : "assistant"}`}
+                >
+                  <strong>{msg.role === "user" ? "You" : "AI"}:</strong> {msg.content}
+                </div>
+              ))}
+            </div>
+            <textarea
+              className="ai-input"
+              placeholder="Ask the AI something..."
+              value={aiInput}
+              onChange={(e) => setAiInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAiSubmit(e)}
+            />
+            <button className="ai-submit-btn" onClick={handleAiSubmit}>
+              Send
+            </button>
+          </div>
         </div>
       );
     }
@@ -522,6 +592,7 @@ const Workspace = () => {
           <button title="Chat" onClick={() => setActivePanel("chat")}>💬</button>
           <button title="Output" onClick={() => setActivePanel("output")}>📤</button>
           <button title="Active Users" onClick={() => setActivePanel("users")}>👥</button>
+          <button title="AI Assistance" onClick={() => setActivePanel("ai-assistance")}>🤖</button>
         </div>
 
         <div className="file-sidebar">
