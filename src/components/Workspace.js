@@ -3,6 +3,7 @@ import Editor from "@monaco-editor/react";
 import { io } from "socket.io-client";
 import debounce from "lodash.debounce";
 import "./workspace.css";
+import { useNavigate } from "react-router-dom"; // Add this import
 
 const BASE_URL=process.env.REACT_APP_API_URL;
 const socket = io(process.env.REACT_APP_API_URL, {
@@ -10,15 +11,16 @@ const socket = io(process.env.REACT_APP_API_URL, {
 });
 
 const defaultCodeTemplates = {
-  javascript: `console.log("Hello from JS!");`,
-  python: `print("Hello from Python!")`,
-  cpp: `#include <iostream>\nusing namespace std;\nint main() {\n  cout << "Hello from C++!" << endl;\n  return 0;\n}`,
-  html: `<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n  <h1>Hello HTML</h1>\n</body>\n</html>`,
+  javascript: 'console.log("Hello from JS!");',
+  python: 'print("Hello from Python!")',
+  cpp: '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "Hello from C++!" << endl;\n  return 0;\n}',
+  html: '<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n  <h1>Hello HTML</h1>\n</body>\n</html>',
 };
 
 const repoCode = localStorage.getItem("joinedRepoCode");
 
 const Workspace = () => {
+  const navigate = useNavigate(); // Add this for navigation
   const [activePanel, setActivePanel] = useState("files");
   const [activeFile, setActiveFile] = useState("index.html");
   const [showModal, setShowModal] = useState(false);
@@ -26,17 +28,24 @@ const Workspace = () => {
   const [stdin, setStdin] = useState("");
   const [activeUsers, setActiveUsers] = useState([]);
   const [newFileLang, setNewFileLang] = useState("javascript");
-  // const [chatMessages, setChatMessages] = useState([
-  //   "Hello chat !!",
-  //   "Talk here !!",
-  //   "Spread love and positivity.",
-  // ]);
   const [chatInput, setChatInput] = useState("");
   const [files, setFiles] = useState({});
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
   const [aiInput, setAiInput] = useState("");
+  const [editingPwd, setEditingPwd] = useState(false);
+  const [currentPwd, setCurrentPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [pwdMsg, setPwdMsg] = useState(null);
+
+  // Add repository information state
+  const [repoInfo, setRepoInfo] = useState({
+    name: "Loading...",
+    code: repoCode || "N/A",
+    password: "********" // For security, we don't show the actual password
+  });
 
   const getLanguageFromFilename = (filename) => {
     if (filename.endsWith(".js")) return "javascript";
@@ -115,6 +124,57 @@ const Workspace = () => {
       }
     }
   };
+
+  const handlePasswordChange = async () => {
+    if (!currentPwd || !newPwd) {
+      setPwdMsg("Please fill both fields");
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      setPwdMsg("New passwords do not match");
+      return;
+    }
+  
+    const token = localStorage.getItem("authToken");
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/repos/${repoInfo.code}/password`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }),
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setPwdMsg("Password changed!");
+        // reset form
+        setEditingPwd(false);
+        setCurrentPwd("");
+        setNewPwd("");
+        setConfirmPwd("");
+      } else {
+        setPwdMsg(data.message || "Failed to update");
+      }
+    } catch (err) {
+      console.error(err);
+      setPwdMsg("Server error");
+    }
+  };
+  
+
+  // Add function to handle leaving the room
+  const handleLeaveRoom = () => {
+    if (window.confirm("Are you sure you want to leave this workspace?")) {
+      socket.emit("leave-room", repoCode);
+      localStorage.removeItem("joinedRepoCode");
+      navigate("/"); // Navigate to home page
+    }
+  };
+  
   useEffect(() => {
     if (!repoCode) return;
   
@@ -142,6 +202,31 @@ const Workspace = () => {
       console.error("Chat error:", error);
       // Optionally display an error to the user
     });
+
+    // Fetch repository information
+    const token = localStorage.getItem("authToken");
+    fetch(`${BASE_URL}/api/repos/${repoCode}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.repository) {
+          setRepoInfo({
+            name: data.repository.name || "Unnamed Repository",
+            code: repoCode,
+            password: "********" // Keep password hidden
+          });
+        } else {
+          console.error("Failed to fetch repository info:", data.message || "Unknown error");
+          setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading repository information:", err);
+        setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
+      });
     
     return () => {
       socket.emit("leave-room", repoCode);
@@ -253,7 +338,7 @@ const Workspace = () => {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: "Bearer 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",
+          Authorization: "Bearer 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",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -279,6 +364,71 @@ const Workspace = () => {
   };
 
   const renderSidebarContent = () => {
+    if (activePanel === "settings") {
+      return (
+        <div className="settings-panel">
+          <h3>Repository Settings</h3>
+          <div className="repo-info">
+            <div className="info-row">
+              <label>Repository Name:</label>
+              <span>{repoInfo.name}</span>
+            </div>
+            <div className="info-row">
+              <label>Repository Code:</label>
+              <span>{repoInfo.code}</span>
+            </div>
+            <div className="info-row">
+              <label>Password:</label>
+              {editingPwd ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <input
+                    type="password"
+                    placeholder="Current password"
+                    value={currentPwd}
+                    onChange={(e) => setCurrentPwd(e.target.value)}
+                    className="password-input"
+                  />
+                  <input
+                    type="password"
+                    placeholder="New password"
+                    value={newPwd}
+                    onChange={(e) => setNewPwd(e.target.value)}
+                    className="password-input"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPwd}
+                    onChange={(e) => setConfirmPwd(e.target.value)}
+                    className="password-input"
+                  />
+                  {pwdMsg && <div className="pwd-msg">{pwdMsg}</div>}
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button onClick={handlePasswordChange}>Save</button>
+                    <button onClick={() => { setEditingPwd(false); setPwdMsg(null); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setEditingPwd(true)}>
+                  Change Password
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="settings-actions">
+            <button 
+              className="leave-btn"
+              onClick={handleLeaveRoom}
+            >
+              Leave Repository
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
     if (activePanel === "chat") {
       return (
         <div className="chat-box">
@@ -554,7 +704,7 @@ const Workspace = () => {
       socket.off("update-users");
       socket.off("initial-files");
     };
-  }, [repoCode]);
+  }, [repoCode, navigate]);
   
 
   return (
@@ -593,6 +743,7 @@ const Workspace = () => {
           <button title="Output" onClick={() => setActivePanel("output")}>📤</button>
           <button title="Active Users" onClick={() => setActivePanel("users")}>👥</button>
           <button title="AI Assistance" onClick={() => setActivePanel("ai-assistance")}>🤖</button>
+          <button title="Settings" onClick={() => setActivePanel("settings")}>⚙️</button>
         </div>
 
         <div className="file-sidebar">
