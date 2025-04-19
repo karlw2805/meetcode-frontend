@@ -16,6 +16,8 @@ const Home = () => {
 
   const [repos, setRepos] = useState([]);
 
+  const [joinPassword, setJoinPassword] = useState("");
+
   useEffect(() => {
     fetch(`${BASE_URL}/api/repos`, {
       method: "GET",
@@ -65,7 +67,7 @@ const Home = () => {
           "Content-Type": "application/json",
           Authorization: "Bearer " + localStorage.getItem("authToken"),
         },
-        body: JSON.stringify({ joinCode }),
+        body: JSON.stringify({ joinCode, joinPassword }),
       });
       const data = await res.json();
       if (data.success) {
@@ -78,6 +80,7 @@ const Home = () => {
       alert("Error joining room.");
     }
   };
+  
 
   return (
     <div className="home-page">
@@ -140,6 +143,13 @@ const Home = () => {
             placeholder="Enter Room Code"
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Enter Room Password"
+            value={joinPassword}
+            onChange={(e) => setJoinPassword(e.target.value)}
             required
           />
           <button className="primary-btn" type="submit">
