@@ -4,8 +4,12 @@ import { io } from "socket.io-client";
 import debounce from "lodash.debounce";
 import "./workspace.css";
 import { useNavigate } from "react-router-dom"; // Add this import
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+import { MonacoBinding } from "y-monaco";
+import * as monaco from "monaco-editor";
 
-const BASE_URL=process.env.REACT_APP_API_URL;
+const BASE_URL = process.env.REACT_APP_API_URL;
 const socket = io(process.env.REACT_APP_API_URL, {
   withCredentials: true,
 });
@@ -14,7 +18,7 @@ const defaultCodeTemplates = {
   javascript: 'console.log("Hello from JS!");',
   python: 'print("Hello from Python!")',
   cpp: '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "Hello from C++!" << endl;\n  return 0;\n}',
-  html: '<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n  <h1>Hello HTML</h1>\n</body>\n</html>',
+  html: "<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n  <h1>Hello HTML</h1>\n</body>\n</html>",
 };
 
 const repoCode = localStorage.getItem("joinedRepoCode");
@@ -39,12 +43,17 @@ const Workspace = () => {
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [pwdMsg, setPwdMsg] = useState(null);
+  const editorRef = useRef(null);
+  const ydocRef = useRef(null);
+  const providerRef = useRef(null);
+  const bindingsRef = useRef({});
+  const [documentSaved, setDocumentSaved] = useState({});
 
   // Add repository information state
   const [repoInfo, setRepoInfo] = useState({
     name: "Loading...",
     code: repoCode || "N/A",
-    password: "********" // For security, we don't show the actual password
+    password: "********", // For security, we don't show the actual password
   });
 
   const getLanguageFromFilename = (filename) => {
@@ -56,18 +65,43 @@ const Workspace = () => {
     return "plaintext";
   };
 
+  // Save file content periodically
+  const saveFileContent = useRef(
+    debounce((filename, content) => {
+      if (!repoCode || !filename) return;
+
+      socket.emit("save-document", {
+        repoCode,
+        filename,
+        content,
+      });
+
+      setDocumentSaved((prev) => ({
+        ...prev,
+        [filename]: true,
+      }));
+
+      setTimeout(() => {
+        setDocumentSaved((prev) => ({
+          ...prev,
+          [filename]: false,
+        }));
+      }, 2000);
+    }, 2000)
+  ).current;
+
   const handleCreateFile = () => {
     if (!newFileName) return;
-  
+
     let extension = "";
     if (newFileLang === "javascript") extension = ".js";
     else if (newFileLang === "python") extension = ".py";
     else if (newFileLang === "cpp") extension = ".cpp";
     else if (newFileLang === "html") extension = ".html";
-  
+
     const fullFileName = newFileName + extension;
     const content = defaultCodeTemplates[newFileLang] || "";
-  
+
     // Update local state
     const updated = { ...files, [fullFileName]: content };
     setFiles(updated);
@@ -75,14 +109,14 @@ const Workspace = () => {
     setShowModal(false);
     setNewFileName("");
     setNewFileLang("javascript");
-  
+
     // 🔄 Real-time file broadcast via socket
     socket.emit("file-created", {
       repoCode,
       file: fullFileName,
       content: content,
     });
-  
+
     // Save to DB via API
     const token = localStorage.getItem("authToken");
     fetch(`${BASE_URL}/api/files/${repoCode}`, {
@@ -95,29 +129,33 @@ const Workspace = () => {
         filename: fullFileName,
         content,
       }),
-    }).catch(err => console.error("Error saving file:", err));
+    }).catch((err) => console.error("Error saving file:", err));
   };
   const [chatMessages, setChatMessages] = useState([
-    { username: "System", message: "Welcome to the chat!", timestamp: new Date() }
+    {
+      username: "System",
+      message: "Welcome to the chat!",
+      timestamp: new Date(),
+    },
   ]);
-  
+
   const handleSendMessage = () => {
     if (!chatInput) {
       console.error("Chat input is undefined or null.");
       return;
     }
-  
+
     const trimmed = chatInput.trim();
     if (trimmed) {
       try {
         const username = localStorage.getItem("username") || "Anonymous";
-  
+
         socket.emit("send-message", {
           repoCode,
           message: trimmed,
           username,
         });
-  
+
         setChatInput("");
       } catch (error) {
         console.error("Failed to send message:", error);
@@ -134,7 +172,7 @@ const Workspace = () => {
       setPwdMsg("New passwords do not match");
       return;
     }
-  
+
     const token = localStorage.getItem("authToken");
     try {
       const res = await fetch(
@@ -145,7 +183,10 @@ const Workspace = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }),
+          body: JSON.stringify({
+            currentPassword: currentPwd,
+            newPassword: newPwd,
+          }),
         }
       );
       const data = await res.json();
@@ -164,7 +205,6 @@ const Workspace = () => {
       setPwdMsg("Server error");
     }
   };
-  
 
   // Add function to handle leaving the room
   const handleLeaveRoom = () => {
@@ -174,30 +214,40 @@ const Workspace = () => {
       navigate("/"); // Navigate to home page
     }
   };
-  
+
+  const handleSaveFile = async () => {
+    if (!activeFile) return;
+
+    // Get current content directly from the editor
+    const content = editorRef.current.getValue();
+
+    // Save to server
+    saveFileContent(activeFile, content);
+  };
+
   useEffect(() => {
     if (!repoCode) return;
-  
+
     const username = localStorage.getItem("username") || "Guest";
-  
+
     if (currentRoomRef.current && currentRoomRef.current !== repoCode) {
       socket.emit("leave-room", currentRoomRef.current);
     }
-  
+
     currentRoomRef.current = repoCode;
     socket.emit("join-room", repoCode, username);
-  
+
     // ... existing code ...
-  
+
     // Chat-specific socket event listeners
     socket.on("new-message", (message) => {
       setChatMessages((prevMessages) => [...prevMessages, message]);
     });
-    
+
     socket.on("chat-history", (messages) => {
       setChatMessages(messages);
     });
-    
+
     socket.on("chat-error", ({ error }) => {
       console.error("Chat error:", error);
       // Optionally display an error to the user
@@ -216,10 +266,13 @@ const Workspace = () => {
           setRepoInfo({
             name: data.repository.name || "Unnamed Repository",
             code: repoCode,
-            password: "********" // Keep password hidden
+            password: "********", // Keep password hidden
           });
         } else {
-          console.error("Failed to fetch repository info:", data.message || "Unknown error");
+          console.error(
+            "Failed to fetch repository info:",
+            data.message || "Unknown error"
+          );
           setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
         }
       })
@@ -227,7 +280,7 @@ const Workspace = () => {
         console.error("Error loading repository information:", err);
         setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
       });
-    
+
     return () => {
       socket.emit("leave-room", repoCode);
       // ... existing cleanup ...
@@ -236,7 +289,7 @@ const Workspace = () => {
       socket.off("chat-error");
     };
   }, [repoCode]);
-  
+
   const handleRunCode = async () => {
     const language = getLanguageFromFilename(activeFile);
     const supportedLanguages = ["python", "javascript", "cpp"];
@@ -290,22 +343,22 @@ const Workspace = () => {
       setFiles((prevFiles) => {
         const updated = { ...prevFiles };
         delete updated[filename];
-        
+
         // Update active file if deleted
         if (activeFile === filename) {
           const remaining = Object.keys(updated);
           setActiveFile(remaining.length ? remaining[0] : "");
         }
-        
+
         return updated;
       });
-      
+
       // Emit socket event for real-time notification to other users
       socket.emit("file-deleted", {
         repoCode,
-        filePath: filename
+        filePath: filename,
       });
-      
+
       // Also delete through REST API as a backup
       const token = localStorage.getItem("authToken");
       fetch(`${BASE_URL}/api/files/${repoCode}`, {
@@ -316,12 +369,12 @@ const Workspace = () => {
         },
         body: JSON.stringify({ filename }),
       })
-      .then(response => {
-        if (!response.ok) {
-          console.error("Failed to delete file via API", response.status);
-        }
-      })
-      .catch(err => console.error("Error deleting file via API:", err));
+        .then((response) => {
+          if (!response.ok) {
+            console.error("Failed to delete file via API", response.status);
+          }
+        })
+        .catch((err) => console.error("Error deleting file via API:", err));
     }
   };
 
@@ -335,17 +388,21 @@ const Workspace = () => {
     // setAiInput("");
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer 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",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "deepseek/deepseek-chat-v3-0324:free", // Replace with your chosen model
-          messages: [...aiMessages, userMessage],
-        }),
-      });
+      const response = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              "Bearer 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",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-chat-v3-0324:free", // Replace with your chosen model
+            messages: [...aiMessages, userMessage],
+          }),
+        }
+      );
 
       const data = await response.json();
       if (data && data.choices && data.choices[0]) {
@@ -380,7 +437,13 @@ const Workspace = () => {
             <div className="info-row">
               <label>Password:</label>
               {editingPwd ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
                   <input
                     type="password"
                     placeholder="Current password"
@@ -405,7 +468,12 @@ const Workspace = () => {
                   {pwdMsg && <div className="pwd-msg">{pwdMsg}</div>}
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button onClick={handlePasswordChange}>Save</button>
-                    <button onClick={() => { setEditingPwd(false); setPwdMsg(null); }}>
+                    <button
+                      onClick={() => {
+                        setEditingPwd(false);
+                        setPwdMsg(null);
+                      }}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -418,17 +486,14 @@ const Workspace = () => {
             </div>
           </div>
           <div className="settings-actions">
-            <button 
-              className="leave-btn"
-              onClick={handleLeaveRoom}
-            >
+            <button className="leave-btn" onClick={handleLeaveRoom}>
               Leave Repository
             </button>
           </div>
         </div>
       );
     }
-    
+
     if (activePanel === "chat") {
       return (
         <div className="chat-box">
@@ -436,11 +501,16 @@ const Workspace = () => {
           <div className="chat-messages">
             {chatMessages.map((msg, idx) => (
               <div key={idx} className="chat-message">
-                <span className="chat-username">{msg.username || "Anonymous"}: </span>
+                <span className="chat-username">
+                  {msg.username || "Anonymous"}:{" "}
+                </span>
                 <span className="chat-text">{msg.message}</span>
                 {msg.timestamp && (
                   <div className="chat-timestamp">
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </div>
                 )}
               </div>
@@ -455,26 +525,35 @@ const Workspace = () => {
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
             />
-            <button className="chat-send-btn" title="Send" onClick={handleSendMessage}>
+            <button
+              className="chat-send-btn"
+              title="Send"
+              onClick={handleSendMessage}
+            >
               ➤
             </button>
           </div>
         </div>
       );
     }
-    
+
     if (activePanel === "output") {
       return (
         <div>
           <div className="output-panel">
             <div>
               <h3>Standard Input (stdin)</h3>
-              <textarea className="stdin-input"
+              <textarea
+                className="stdin-input"
                 rows={4}
                 placeholder="Enter input for the program..."
                 value={stdin}
                 onChange={(e) => setStdin(e.target.value)}
-                style={{ width: "100%", padding: "8px", fontFamily: "monospace" }}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  fontFamily: "monospace",
+                }}
               />
             </div>
             <h3>Execution Output</h3>
@@ -513,9 +592,12 @@ const Workspace = () => {
               {aiMessages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`ai-message ${msg.role === "user" ? "user" : "assistant"}`}
+                  className={`ai-message ${
+                    msg.role === "user" ? "user" : "assistant"
+                  }`}
                 >
-                  <strong>{msg.role === "user" ? "You" : "AI"}:</strong> {msg.content}
+                  <strong>{msg.role === "user" ? "You" : "AI"}:</strong>{" "}
+                  {msg.content}
                 </div>
               ))}
             </div>
@@ -524,7 +606,9 @@ const Workspace = () => {
               placeholder="Ask the AI something..."
               value={aiInput}
               onChange={(e) => setAiInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAiSubmit(e)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !e.shiftKey && handleAiSubmit(e)
+              }
             />
             <button className="ai-submit-btn" onClick={handleAiSubmit}>
               Send
@@ -577,19 +661,19 @@ const Workspace = () => {
       </div>
     );
   };
-  
+
   const handleEditorChange = debounce((value) => {
     const updatedFiles = { ...files, [activeFile]: value };
     setFiles(updatedFiles);
-  
+
     socket.emit("code-change", {
       repoCode,
       filename: activeFile,
       code: value,
     });
-  
+
     const token = localStorage.getItem("authToken");
-  
+
     fetch(`${BASE_URL}/api/files/${repoCode}`, {
       method: "PUT",
       headers: {
@@ -602,21 +686,98 @@ const Workspace = () => {
       }),
     }).catch((err) => console.error("Failed to save code:", err));
   }, 500);
-  
+
+  const setupEditorWithYjs = (editor, filename) => {
+    if (!editor || !filename || !repoCode) return;
+
+    editorRef.current = editor;
+
+    // Create a new Y.Doc instance if one doesn't exist
+    if (!ydocRef.current) {
+      ydocRef.current = new Y.Doc();
+    }
+
+    // Clean up previous provider if it exists
+    if (providerRef.current) {
+      providerRef.current.destroy();
+    }
+
+    // Create a new websocket provider
+    const websocketUrl = process.env.REACT_APP_YJS_WS_URL;
+
+    const roomName = `${repoCode}-${filename}`;
+    console.log("🛰  Yjs connecting to", websocketUrl, "room", roomName);
+
+    providerRef.current = new WebsocketProvider(
+      websocketUrl,
+      roomName,
+      ydocRef.current
+    );
+
+    if (!providerRef.current) {
+      console.error("Failed to create Yjs provider");
+      return;
+    } else {
+      console.log("Yjs provider created successfully");
+    }
+
+    // Get or create text for the file
+    const ytext = ydocRef.current.getText(filename);
+
+    // Bind Monaco editor to Yjs
+    const binding = new MonacoBinding(
+      ytext,
+      editorRef.current.getModel(),
+      new Set([editorRef.current]),
+      providerRef.current.awareness
+    );
+
+    // Store binding for cleanup
+    bindingsRef.current[filename] = binding;
+
+    // Setup periodic save
+    const handleContentChange = () => {
+      const content = editor.getValue();
+      // Update files state
+      setFiles((prev) => ({
+        ...prev,
+        [filename]: content,
+      }));
+
+      // Save to server periodically
+      saveFileContent(filename, content);
+    };
+
+    // Add change listener
+    const disposable = editor.onDidChangeModelContent(handleContentChange);
+
+    // Setup connection status event
+    providerRef.current.on("status", (event) => {
+      console.log(`Yjs connection status for ${filename}: ${event.status}`);
+    });
+
+    return () => {
+      disposable.dispose();
+      if (bindingsRef.current[filename]) {
+        bindingsRef.current[filename].destroy();
+        delete bindingsRef.current[filename];
+      }
+    };
+  };
 
   const currentRoomRef = useRef(null); // track the current joined room
   useEffect(() => {
     if (!repoCode) return;
-  
+
     const username = localStorage.getItem("username") || "Guest";
-  
+
     if (currentRoomRef.current && currentRoomRef.current !== repoCode) {
       socket.emit("leave-room", currentRoomRef.current);
     }
-  
+
     currentRoomRef.current = repoCode;
     socket.emit("join-room", repoCode, username);
-  
+
     // Load files from database on mount
     const token = localStorage.getItem("authToken");
     fetch(`${BASE_URL}/api/files/${repoCode}`, {
@@ -638,15 +799,29 @@ const Workspace = () => {
         }
       })
       .catch((err) => console.error("Error loading files:", err));
-  
-    // Setup socket event listeners
-    socket.on("code-update", ({ filename, code }) => {
-      setFiles((prevFiles) => {
-        if (prevFiles[filename] === code) return prevFiles;
-        return { ...prevFiles, [filename]: code };
-      });
+
+    // // Setup socket event listeners
+    // socket.on("code-update", ({ filename, code }) => {
+    //   setFiles((prevFiles) => {
+    //     if (prevFiles[filename] === code) return prevFiles;
+    //     return { ...prevFiles, [filename]: code };
+    //   });
+    // });
+
+    socket.on("document-saved", ({ filename }) => {
+      setDocumentSaved((prev) => ({
+        ...prev,
+        [filename]: true,
+      }));
+
+      setTimeout(() => {
+        setDocumentSaved((prev) => ({
+          ...prev,
+          [filename]: false,
+        }));
+      }, 2000);
     });
-  
+
     socket.on("file-created", (file) => {
       if (!file || !file.path) return;
       setFiles((prevFiles) => {
@@ -654,58 +829,68 @@ const Workspace = () => {
         return { ...prevFiles, [file.path]: file.content || "" };
       });
     });
-  
+
     socket.on("file-deleted", ({ filePath }) => {
       console.log(`Received file-deleted event for ${filePath}`);
-      
+
       setFiles((prevFiles) => {
         if (!prevFiles[filePath]) {
-          console.log(`File ${filePath} not found in local state, nothing to delete`);
+          console.log(
+            `File ${filePath} not found in local state, nothing to delete`
+          );
           return prevFiles;
         }
-        
+
         console.log(`Removing file ${filePath} from local state`);
         const updated = { ...prevFiles };
         delete updated[filePath];
-        
+
         // Update active file if needed
         if (activeFile === filePath) {
           const remaining = Object.keys(updated);
           setActiveFile(remaining.length ? remaining[0] : "");
         }
-        
+
         return updated;
       });
     });
-  
+
     socket.on("update-users", (users) => {
       setActiveUsers(users);
     });
-  
+
     socket.on("initial-files", (filesArray) => {
       const filesObj = {};
-      filesArray.forEach(file => {
+      filesArray.forEach((file) => {
         filesObj[file.path] = file.content;
       });
-      
+
       setFiles(filesObj);
-      
+
       // Set active file to the first file if we have files
       if (Object.keys(filesObj).length > 0 && !activeFile) {
         setActiveFile(Object.keys(filesObj)[0]);
       }
     });
-  
+
     return () => {
       socket.emit("leave-room", repoCode);
-      socket.off("code-update");
+      //socket.off("code-update");
       socket.off("file-created");
       socket.off("file-deleted");
       socket.off("update-users");
       socket.off("initial-files");
+      // Clean up Yjs bindings
+      Object.values(bindingsRef.current).forEach((binding) => {
+        if (binding && binding.destroy) binding.destroy();
+      });
+
+      // Destroy provider
+      if (providerRef.current) {
+        providerRef.current.destroy();
+      }
     };
-  }, [repoCode, navigate]);
-  
+  }, [navigate, activeFile]);
 
   return (
     <div className="workspace-container">
@@ -738,17 +923,30 @@ const Workspace = () => {
 
       <div className="workspace-main">
         <div className="vertical-toolbar">
-          <button title="Files" onClick={() => setActivePanel("files")}>🗂</button>
-          <button title="Chat" onClick={() => setActivePanel("chat")}>💬</button>
-          <button title="Output" onClick={() => setActivePanel("output")}>📤</button>
-          <button title="Active Users" onClick={() => setActivePanel("users")}>👥</button>
-          <button title="AI Assistance" onClick={() => setActivePanel("ai-assistance")}>🤖</button>
-          <button title="Settings" onClick={() => setActivePanel("settings")}>⚙️</button>
+          <button title="Files" onClick={() => setActivePanel("files")}>
+            🗂
+          </button>
+          <button title="Chat" onClick={() => setActivePanel("chat")}>
+            💬
+          </button>
+          <button title="Output" onClick={() => setActivePanel("output")}>
+            📤
+          </button>
+          <button title="Active Users" onClick={() => setActivePanel("users")}>
+            👥
+          </button>
+          <button
+            title="AI Assistance"
+            onClick={() => setActivePanel("ai-assistance")}
+          >
+            🤖
+          </button>
+          <button title="Settings" onClick={() => setActivePanel("settings")}>
+            ⚙️
+          </button>
         </div>
 
-        <div className="file-sidebar">
-          {renderSidebarContent()}
-        </div>
+        <div className="file-sidebar">{renderSidebarContent()}</div>
 
         <div className="code-editor">
           <div className="editor-pane">
@@ -756,7 +954,8 @@ const Workspace = () => {
               <Editor
                 language={getLanguageFromFilename(activeFile)}
                 value={files[activeFile] || ""}
-                onChange={handleEditorChange}
+                //onChange={handleEditorChange}
+                onMount={(editor) => setupEditorWithYjs(editor, activeFile)}
                 theme="vs-dark"
                 options={{
                   fontSize: 16,
