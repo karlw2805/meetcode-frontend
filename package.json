@@ -11,12 +11,16 @@
     "dotenv": "^16.4.7",
     "lodash.debounce": "^4.0.8",
     "monaco": "^1.201704190613.0",
+    "monaco-editor": "^0.52.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.1",
     "react-scripts": "5.0.1",
     "socket.io-client": "^4.8.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "y-monaco": "^0.1.6",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.26"
   },
   "scripts": {
     "start": "react-scripts start",
