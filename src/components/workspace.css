@@ -1,4 +1,8 @@
 /* Reset and Base */
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap");
 
 .run-controls {
   padding: 10px;
@@ -27,6 +31,156 @@
 .run-controls button:hover:not(:disabled) {
   background-color: #45a049;
 }
+
+
+/* —— Krish —— */
+
+/* —— Bubble container —— */
+.chat-message {
+  display: flex;
+  margin: 10px 3px;
+}
+.chat-message.own {
+  justify-content: flex-end;
+}
+
+/* —— Make the bubble shrink‑to‑fit its contents —— */
+.chat-content {
+  display: inline-block; /* width = content */
+  vertical-align: top; /* align multiple bubbles nicely */
+  max-width: 80%; /* don’t let super‑long text run wild */
+  background-color: #e1f5fe; /* incoming (blue) */
+  border-radius: 14px;
+  padding: 12px 16px; /* equal padding all around */
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.chat-message.own .chat-content {
+  background-color: #1ed760;
+  /* outgoing (green) */
+}
+
+/* —— Username, message & time all flow in normal document order —— */
+.chat-username,
+.chat-text,
+.chat-time {
+  display: block; /* each takes its own line */
+  margin-bottom: 3px; /* small gap between lines */
+  word-break: break-word; /* wrap long words */
+  white-space: pre-wrap; /* respect newlines */
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.8rem;
+}
+
+/* —— Username styling —— */
+.chat-username {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #555;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* —— Message text —— */
+.chat-text {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #111;
+}
+
+/* —— Timestamp aligned right —— */
+.chat-time {
+  font-size: 0.65rem;
+  color: #888;
+  text-align: right; /* push it to the right edge of the bubble */
+  margin-bottom: 0; /* no extra gap below */
+}
+
+/* —— Chat container styles remain the same —— */
+
+/* —— Chat bubble —— */
+.chat-content {
+  display: inline-block;
+  vertical-align: top;
+  max-width: 80%;
+  padding: 8px 10px 6px 10px;
+  border-radius: 14px;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.2;
+}
+
+/* Incoming */
+.chat-message:not(.own) .chat-content {
+  background-color: #e1f5fe;
+  border-bottom-left-radius: 2px; /* slightly pointed */
+}
+
+/* Outgoing */
+.chat-message.own .chat-content {
+  background-color: #1ed760;
+  border-bottom-right-radius: 2px;
+}
+
+/* — Add pseudo-elements to create "tails" — */
+.chat-message:not(.own) .chat-content::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-right-color: #e1f5fe;
+  border-left: none;
+  border-bottom: none;
+}
+
+.chat-message.own .chat-content::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-left-color: #1ed760;
+  border-right: none;
+  border-bottom: none;
+}
+
+/* —— Inside bubble content —— */
+.chat-username,
+.chat-text,
+.chat-time {
+  display: block;
+  margin-bottom: 2px;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+}
+
+/* Username aligned left */
+.chat-username {
+  font-weight: 600;
+  color: #444;
+}
+
+/* Message text */
+.chat-text {
+  font-size: 0.9rem;
+  color: #111;
+}
+
+/* Time aligned to bottom right of bubble */
+.chat-time {
+  font-size: 0.65rem;
+  color: #888;
+  text-align: right;
+  margin: 0;
+  margin-top: 2px;
+}
+/*Krish*/
 
 .editor-pane {
   display: flex;
