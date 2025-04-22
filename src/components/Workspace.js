@@ -384,6 +384,14 @@ const Workspace = () => {
     }
   };
 
+  const capitalizeWords = (str) => {
+    return str
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const handleAiSubmit = async (e) => {
     e.preventDefault();
     if (!aiInput.trim()) return;
@@ -578,25 +586,54 @@ const Workspace = () => {
     if (activePanel === "chat") {
       return (
         <div className="chat-box">
-          <h3>Team Chat</h3>
+        <h3>Team Chat</h3>
           <div className="chat-messages">
-            {chatMessages.map((msg, idx) => (
-              <div key={idx} className="chat-message">
-                <span className="chat-username">
-                  {msg.username || "Anonymous"}:{" "}
-                </span>
-                <span className="chat-text">{msg.message}</span>
-                {msg.timestamp && (
-                  <div className="chat-timestamp">
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+            {chatMessages.map((msg, idx) => {
+              const currentUser =
+                localStorage.getItem("username") || "Anonymous";
+              const isOwn = msg.username === currentUser;
+              return (
+                <div key={idx} className={`chat-message${isOwn ? " own" : ""}`}>
+                  <div className="chat-content">
+                    <span className="chat-username">
+                      {isOwn
+                        ? "You"
+                        : capitalizeWords(msg.username) || "Anonymous"}
+                    </span>
+
+                    <span className="chat-text">{msg.message}</span>
+                    {msg.timestamp && (
+                      <span className="chat-time">
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
+          // <h3>Team Chat</h3>
+          // <div className="chat-messages">
+          //   {chatMessages.map((msg, idx) => (
+          //     <div key={idx} className="chat-message">
+          //       <span className="chat-username">
+          //         {msg.username || "Anonymous"}:{" "}
+          //       </span>
+          //       <span className="chat-text">{msg.message}</span>
+          //       {msg.timestamp && (
+          //         <div className="chat-timestamp">
+          //           {new Date(msg.timestamp).toLocaleTimeString([], {
+          //             hour: "2-digit",
+          //             minute: "2-digit",
+          //           })}
+          //         </div>
+          //       )}
+          //     </div>
+          //   ))}
+          // </div>
           <div className="chat-input-row">
             <input
               type="text"
