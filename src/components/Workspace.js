@@ -8,6 +8,9 @@ import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { MonacoBinding } from "y-monaco";
 import * as monaco from "monaco-editor";
+import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const BASE_URL = process.env.REACT_APP_API_URL;
 const socket = io(process.env.REACT_APP_API_URL, {
@@ -48,6 +51,9 @@ const Workspace = () => {
   const providerRef = useRef(null);
   const bindingsRef = useRef({});
   const [documentSaved, setDocumentSaved] = useState({});
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isHoveringCopy, setIsHoveringCopy] = useState(false);
 
   // Add repository information state
   const [repoInfo, setRepoInfo] = useState({
@@ -386,6 +392,7 @@ const Workspace = () => {
     // setAiMessages("");
     // setAiMessages((prev) => [...prev, userMessage]);
     // setAiInput("");
+    setLoadingAI(true);
 
     try {
       const response = await fetch(
@@ -394,7 +401,7 @@ const Workspace = () => {
           method: "POST",
           headers: {
             Authorization:
-              "Bearer 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",
+              `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -417,7 +424,81 @@ const Workspace = () => {
       }
     } catch (error) {
       console.error("Error calling OpenRouter API:", error);
+    } finally {
+      setLoadingAI(false);
     }
+  };
+
+  const MarkdownRenderer = ({content}) => {
+    return (
+      <ReactMarkdown
+        components={{
+          code({ node, inline, className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || '');
+  
+            const handleCopy = () => {
+              try {
+                const text = String(children);
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              } catch (err) {
+                console.error('Copy failed:', err);
+              }
+            };            
+  
+            return !inline && match ? (
+              <div
+                className="code-block-wrapper"
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setIsHoveringCopy(true)}
+                onMouseLeave={() => setIsHoveringCopy(false)}
+              >
+                <button
+                  onClick={handleCopy}
+                  style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    background: '#333',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    fontSize: '10 px',
+                    zIndex: 10,
+                    opacity: isHoveringCopy ? 1 : 0,
+                    transition: 'opacity 0.2s ease-in-out',
+                  }}
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+                <SyntaxHighlighter
+                  style={atomDark}
+                  language={match[1]}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              </div>
+            ) : (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   };
 
   const renderSidebarContent = () => {
@@ -596,10 +677,14 @@ const Workspace = () => {
                     msg.role === "user" ? "user" : "assistant"
                   }`}
                 >
-                  <strong>{msg.role === "user" ? "You" : "AI"}:</strong>{" "}
-                  {msg.content}
+                <MarkdownRenderer content={msg.content} />
                 </div>
               ))}
+              {loadingAI && (
+                <div className="ai-loading">
+                  Loading...
+                </div>
+              )}
             </div>
             <textarea
               className="ai-input"
