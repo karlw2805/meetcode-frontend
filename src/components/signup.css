@@ -1,4 +1,4 @@
-/* Global reset and base styling */
+Global reset and base styling
 * {
   box-sizing: border-box;
 }
@@ -33,7 +33,7 @@ body {
 }
 
 .signup-left h1 {
-  font-size: 24px;
+  font-size: 36px;
   color: white;
 }
 
@@ -42,8 +42,8 @@ body {
   border: 2px solid #00ffae;
   color: #00ffae;
   padding: 12px;
-  width: 280px;
-  font-size: 12px;
+  width: 400px;
+  font-size: 18px;
   outline: none;
 }
 
@@ -51,7 +51,7 @@ body {
   background-color: #00ffae;
   border: none;
   padding: 12px 30px;
-  font-size: 12px;
+  font-size: 18px;
   color: #000;
   font-weight: bold;
   cursor: pointer;
@@ -62,7 +62,7 @@ body {
 
 /* Link text styling */
 .login-text {
-  font-size: 10px;
+  font-size: 18px;
 }
 
 .login-text span {
@@ -81,13 +81,7 @@ body {
 }
 
 .signup-right img {
-  width: 300px;
+  width: 500px;
   max-width: 90%;
 }
 
-.logo {
-  margin-top: 20px;
-  text-align: center;
-  color: #00ffae;
-  font-size: 16px;
-}
