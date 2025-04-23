@@ -409,7 +409,8 @@ const Workspace = () => {
           method: "POST",
           headers: {
             Authorization:
-              `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
+              "Bearer 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",
+              // `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -615,25 +616,25 @@ const Workspace = () => {
               );
             })}
           </div>
-          // <h3>Team Chat</h3>
-          // <div className="chat-messages">
-          //   {chatMessages.map((msg, idx) => (
-          //     <div key={idx} className="chat-message">
-          //       <span className="chat-username">
-          //         {msg.username || "Anonymous"}:{" "}
-          //       </span>
-          //       <span className="chat-text">{msg.message}</span>
-          //       {msg.timestamp && (
-          //         <div className="chat-timestamp">
-          //           {new Date(msg.timestamp).toLocaleTimeString([], {
-          //             hour: "2-digit",
-          //             minute: "2-digit",
-          //           })}
-          //         </div>
-          //       )}
-          //     </div>
-          //   ))}
-          // </div>
+          {/* <h3>Team Chat</h3>
+          <div className="chat-messages">
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className="chat-message">
+                <span className="chat-username">
+                  {msg.username || "Anonymous"}:{" "}
+                </span>
+                <span className="chat-text">{msg.message}</span>
+                {msg.timestamp && (
+                  <div className="chat-timestamp">
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div> */}
           <div className="chat-input-row">
             <input
               type="text"
@@ -871,7 +872,9 @@ const Workspace = () => {
     };
 
     // Add change listener
-    const disposable = editor.onDidChangeModelContent(handleContentChange);
+    const disposable = editor.onDidChangeModelContent(() => {
+      handleContentChange(); // Call the handleContentChange function
+    });
 
     // Setup connection status event
     providerRef.current.on("status", (event) => {
@@ -1033,7 +1036,6 @@ const Workspace = () => {
               <option value="javascript">JavaScript (.js)</option>
               <option value="python">Python (.py)</option>
               <option value="cpp">C++ (.cpp)</option>
-              <option value="html">HTML (.html)</option>
             </select>
             <div style={{ marginTop: "10px" }}>
               <button onClick={handleCreateFile}>Create</button>
