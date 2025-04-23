@@ -1,12 +1,38 @@
 .login-btn {
   background-color: #00ffae;
   border: none;
-  padding: 12px 30px;
-  font-size: 12px;
+  /* padding: 12px 30px; */
+  font-size: 18px;
   color: #000;
   font-weight: bold;
   cursor: pointer;
   border-radius: 8px;
-  width: 180px;
   text-align: center;
+}
+
+/* padding 0 */
+.navbar { 
+  padding: 0;
+}
+
+/* Navbar brand name */
+
+/* nav-items*/
+.navbar-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px; /* Added space between items */
+  padding: 0px 20px;
+  list-style: none;
+  margin: 0;
+  font-size: 24px;
+}
+
+.navbar-brand {
+  /* font-family: "Bodoni 11", monospace, sans-serif; */
+  /* padding : 0 0px; */
+  font-size: 30px;
+  font-weight: bold;
+  /* color: #00ffae; */
 }
