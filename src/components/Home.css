@@ -3,12 +3,13 @@
   color: white;
   min-height: 100vh;
   padding: 2rem;
-  font-family: "Courier New", monospace;
+  font-family: 'JetBrains Mono', monospace;
   text-align: center;
 }
 
 .logo-icon {
-  font-size: 2.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 5rem;
   color: #00ffae;
   margin-bottom: 0.5rem;
 }
