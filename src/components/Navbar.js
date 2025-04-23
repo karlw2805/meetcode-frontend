@@ -17,9 +17,9 @@ const Navbar = (props) => {
   const hideLogoutPath =
     location.pathname === "/login" || location.pathname === "/signin";
 
-  // Hide Home and Logout if role is workspace OR if path starts with /workspace/thesis
+  // Hide Home and Logout if role is workspace OR if path starts with /workspace
   const hideNav =
-    role === "workspace" || location.pathname.startsWith("/workspace/thesis");
+    role === "workspace" || location.pathname.startsWith("/workspace");
 
   return (
     <div>
