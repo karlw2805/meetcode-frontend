@@ -150,7 +150,6 @@ const SignUp = () => {
 
       {/* Right Side: Illustration */}
       <div className="signup-right">
-        <p className="logo">MeetCode</p>
         <img src="/dev-illustration.png" alt="Developer Illustration" />
       </div>
     </div>
