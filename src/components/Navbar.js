@@ -30,7 +30,7 @@ const Navbar = (props) => {
         <div className="container-fluid">
           <div className="navbar-brand">{props.title}</div>
           <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            {!hideNav && (
+            {!hideLogoutPath && !hideNav && (
               <ul className="navbar-nav me-auto mb-2 mb-lg-0">
                 <li className="nav-item">
                   <Link
