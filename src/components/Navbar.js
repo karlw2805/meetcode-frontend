@@ -15,9 +15,9 @@ const Navbar = (props) => {
   };
 
   const hideLogoutPath =
-    location.pathname === "/login" || location.pathname === "/signin";
+    location.pathname === "/login" || location.pathname === "/signup";
 
-  // Hide Home and Logout if role is workspace OR if path starts with /workspace
+  // Hide Home and Logout if role is workspace OR if path starts with /workspace/thesis
   const hideNav =
     role === "workspace" || location.pathname.startsWith("/workspace");
 
@@ -28,9 +28,9 @@ const Navbar = (props) => {
         style={{ backgroundColor: "#1e1e1e" }}
       >
         <div className="container-fluid">
-          <div className="navbar-brand">{props.title}</div>
+          <div className="navbar-brand">MeetCode</div>
           <div className="collapse navbar-collapse" id="navbarSupportedContent">
-            {!hideLogoutPath && !hideNav && (
+            {!hideNav && !hideLogoutPath && (
               <ul className="navbar-nav me-auto mb-2 mb-lg-0">
                 <li className="nav-item">
                   <Link
@@ -39,6 +39,15 @@ const Navbar = (props) => {
                     to={role === "student" ? "/" : "/admin"}
                   >
                     Home
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link 
+                    className="nav-link active" 
+                    aria-current="page"
+                    to={role==="student" ? "/" : "/admin"}
+                  >
+                    About
                   </Link>
                 </li>
               </ul>
