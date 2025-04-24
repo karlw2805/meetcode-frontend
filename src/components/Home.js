@@ -160,14 +160,14 @@ const Home = () => {
 
       {repos.length > 0 && (
         <div className="repo-list">
-          <h2>Your Repositories</h2>
+          <h2 className="title">Your Repositories</h2>
           <ul>
             {repos.map((repo, idx) => (
               <li key={idx} className="repo-item">
                 <div className="repo-details">
                   <strong>{repo.repoName}</strong> — Code: {repo.repoCode}
                 </div>
-                <button
+                {/* <button
                   className="join-btn"
                   onClick={async () => {
                     try {
@@ -195,7 +195,7 @@ const Home = () => {
                   }}
                 >
                   Join
-                </button>
+                </button> */}
               </li>
             ))}
           </ul>
