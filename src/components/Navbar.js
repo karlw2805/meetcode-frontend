@@ -1,9 +1,10 @@
-import React from "react";
-import PropTypes from "prop-types";
+import React, { useState } from "react";
+import Modal from "react-modal";
 import "./Navbar.css";
 import { Link, useLocation } from "react-router-dom";
 
 const Navbar = (props) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const role = localStorage.getItem("role");
   const location = useLocation();
 
@@ -17,7 +18,6 @@ const Navbar = (props) => {
   const hideLogoutPath =
     location.pathname === "/login" || location.pathname === "/signup";
 
-  // Hide Home and Logout if role is workspace OR if path starts with /workspace/thesis
   const hideNav =
     role === "workspace" || location.pathname.startsWith("/workspace");
 
@@ -29,12 +29,17 @@ const Navbar = (props) => {
       >
         <div className="container-fluid">
           <div className="navbar-brand">MeetCode</div>
-          <div className="collapse navbar-collapse" id="navbarSupportedContent">
+          <div
+            className="collapse navbar-collapse"
+            id="navbarSupportedContent"
+          >
             {!hideNav && !hideLogoutPath && (
               <ul className="navbar-nav me-auto mb-2 mb-lg-0">
                 <li className="nav-item">
                   <Link
-                    className="nav-link active"
+                    className={`nav-link ${
+                      location.pathname === "/" ? "active-link" : ""
+                    }`}
                     aria-current="page"
                     to={role === "student" ? "/" : "/admin"}
                   >
@@ -42,10 +47,11 @@ const Navbar = (props) => {
                   </Link>
                 </li>
                 <li className="nav-item">
-                  <Link 
-                    className="nav-link active" 
-                    aria-current="page"
-                    to={role==="student" ? "/" : "/admin"}
+                  <Link
+                    className={`nav-link ${
+                      location.pathname === "/aboutt" ? "active-link" : ""
+                    }`}
+                    to="/aboutt"
                   >
                     About
                   </Link>
@@ -53,20 +59,44 @@ const Navbar = (props) => {
               </ul>
             )}
             {!hideLogoutPath && !hideNav && (
-              <button className="login-btn" onClick={handleLogout}>
+              <button
+                className="login-btn"
+                onClick={() => setIsModalOpen(true)}
+              >
                 Logout
               </button>
             )}
           </div>
         </div>
       </nav>
+
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={() => setIsModalOpen(false)}
+        className="logout-modal"
+        overlayClassName="logout-modal-overlay"
+      >
+        <h2>Are you sure you want to logout?</h2>
+        <div className="modal-buttons">
+          <button
+            className="primary-btn"
+            onClick={() => {
+              handleLogout();
+              setIsModalOpen(false);
+            }}
+          >
+            Yes
+          </button>
+          <button
+            className="secondary-btn"
+            onClick={() => setIsModalOpen(false)}
+          >
+            No
+          </button>
+        </div>
+      </Modal>
     </div>
   );
-};
-
-Navbar.propTypes = {
-  title: PropTypes.string.isRequired,
-  mode: PropTypes.oneOf(["light", "dark"]),
 };
 
 export default Navbar;
