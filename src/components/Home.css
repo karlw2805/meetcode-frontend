@@ -15,12 +15,12 @@
 }
 
 .home-title {
-  font-size: 2.2rem;
+  font-size: 2.5rem;
   margin-bottom: 0.3rem;
 }
 
 .home-subtitle {
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   margin-bottom: 2rem;
   color: #ccc;
 }
@@ -90,16 +90,7 @@
   padding: 6px 0;
 }
 
-.join-btn {
-  background-color: #00ffae;
-  /* color: white; */
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.join-btn:hover {
-  background-color: #00ffae;
+.title {
+  text-align: center; /* Centers the text horizontally */
+  margin: 20px 0; /* Optional: Adds spacing above and below the title */
 }
