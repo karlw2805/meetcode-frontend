@@ -710,7 +710,7 @@ const Workspace = () => {
     if (activePanel === "ai-assistance") {
       return (
         <div className="ai-assistance-panel">
-          <h3>AI Assistance 🤖</h3>
+          <h3>AI Assistance </h3>
           <div className="ai-chatbox">
             <div className="ai-messages">
               {aiMessages.map((msg, idx) => (
