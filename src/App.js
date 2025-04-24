@@ -64,33 +64,11 @@ function App() {
       >
         <Navbar title="Code Editor" mode={mode} />
         <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <Home />
-              </>
-            }
-          />
-
-          <Route path="/about" element={<About />} />
-          <Route path="/workspace/:roomcode" element={<Workspace />} />
-
+          <Route path="/" element={<Home />} />
+          <Route path="/aboutt" element={<About />} /> {/* Ensure this matches the Navbar link */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
-          {/* <Route path="/test/:testnum/:questionnum" element={<TestPage />} />
-          <Route path="/result/:testnum" element={<Result />} />
-          <Route
-            path="/admin"
-            element={
-              <>
-                <h1>Hello {namee}</h1>
-                <AdminPage />
-              </>
-            }
-          />
-          <Route path="/admin/test/:testnum" element={<TestDetail />} />
-          <Route path="admin/addtest" element={<Addtest />} /> */}
+          <Route path="/workspace/:repoName" element={<Workspace />} />
         </Routes>
       </div>
     </userContext.Provider>
