@@ -82,3 +82,24 @@
   margin-bottom: 0.5rem;
   border-radius: 5px;
 }
+
+.repo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.join-btn {
+  background-color: #00ffae;
+  /* color: white; */
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.join-btn:hover {
+  background-color: #00ffae;
+}
