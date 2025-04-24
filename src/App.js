@@ -37,6 +37,31 @@ function App() {
     }
   }, [authToken, navigate]);
 
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        (event.key === "+" || event.key === "-" || event.key === "=")
+      ) {
+        event.preventDefault();
+      }
+    };
+
+    const handleWheel = (event) => {
+      if (event.ctrlKey) {
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
   const [text, setText] = useState("");
 
   return (
