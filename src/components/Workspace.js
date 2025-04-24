@@ -9,8 +9,8 @@ import { WebsocketProvider } from "y-websocket";
 import { MonacoBinding } from "y-monaco";
 import * as monaco from "monaco-editor";
 import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const BASE_URL = process.env.REACT_APP_API_URL;
 const socket = io(process.env.REACT_APP_API_URL, {
@@ -96,6 +96,8 @@ const Workspace = () => {
     }, 2000)
   ).current;
 
+  const newlyCreatedRef = useRef({});
+
   const handleCreateFile = () => {
     if (!newFileName) return;
 
@@ -106,7 +108,12 @@ const Workspace = () => {
     else if (newFileLang === "html") extension = ".html";
 
     const fullFileName = newFileName + extension;
+    newlyCreatedRef.current[fullFileName] = true;
+
+    console.log("newFileLang", newFileLang);
+
     const content = defaultCodeTemplates[newFileLang] || "";
+    console.log("content", content);
 
     // Update local state
     const updated = { ...files, [fullFileName]: content };
@@ -231,71 +238,6 @@ const Workspace = () => {
     saveFileContent(activeFile, content);
   };
 
-  useEffect(() => {
-    if (!repoCode) return;
-
-    const username = localStorage.getItem("username") || "Guest";
-
-    if (currentRoomRef.current && currentRoomRef.current !== repoCode) {
-      socket.emit("leave-room", currentRoomRef.current);
-    }
-
-    currentRoomRef.current = repoCode;
-    socket.emit("join-room", repoCode, username);
-
-    // ... existing code ...
-
-    // Chat-specific socket event listeners
-    socket.on("new-message", (message) => {
-      setChatMessages((prevMessages) => [...prevMessages, message]);
-    });
-
-    socket.on("chat-history", (messages) => {
-      setChatMessages(messages);
-    });
-
-    socket.on("chat-error", ({ error }) => {
-      console.error("Chat error:", error);
-      // Optionally display an error to the user
-    });
-
-    // Fetch repository information
-    const token = localStorage.getItem("authToken");
-    fetch(`${BASE_URL}/api/repos/${repoCode}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.repository) {
-          setRepoInfo({
-            name: data.repository.name || "Unnamed Repository",
-            code: repoCode,
-            password: "********", // Keep password hidden
-          });
-        } else {
-          console.error(
-            "Failed to fetch repository info:",
-            data.message || "Unknown error"
-          );
-          setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
-        }
-      })
-      .catch((err) => {
-        console.error("Error loading repository information:", err);
-        setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
-      });
-
-    return () => {
-      socket.emit("leave-room", repoCode);
-      // ... existing cleanup ...
-      socket.off("new-message");
-      socket.off("chat-history");
-      socket.off("chat-error");
-    };
-  }, [repoCode]);
-
   const handleRunCode = async () => {
     const language = getLanguageFromFilename(activeFile);
     const supportedLanguages = ["python", "javascript", "cpp"];
@@ -343,29 +285,92 @@ const Workspace = () => {
     setIsRunning(false);
   };
 
+  // const handleDeleteFile = (filename) => {
+  //   if (!files[filename]) {
+  //     console.warn(
+  //       "Tried to delete a file that doesn't exist locally:",
+  //       filename
+  //     );
+  //     return;
+  //   }
+
+  //   if (window.confirm(`Are you sure you want to delete "${filename}"?`)) {
+  //     // Remove from local state first
+  //     setFiles((prevFiles) => {
+  //       const updated = { ...prevFiles };
+  //       delete updated[filename];
+
+  //       // Update active file if deleted
+  //       if (activeFile === filename) {
+  //         const remaining = Object.keys(updated);
+  //         setActiveFile(remaining.length ? remaining[0] : "");
+  //       }
+
+  //       return updated;
+  //     });
+
+  //     // Emit socket event for real-time notification to other users
+  //     socket.emit("file-deleted", {
+  //       repoCode,
+  //       filePath: filename,
+  //     });
+
+  //     // Also delete through REST API as a backup
+  //     const token = localStorage.getItem("authToken");
+  //     fetch(`${BASE_URL}/api/files/${repoCode}`, {
+  //       method: "DELETE",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify({ filename }),
+  //     })
+  //       .then((response) => {
+  //         if (!response.ok) {
+  //           console.error("Failed to delete file via API", response.status);
+  //         }
+  //       })
+  //       .catch((err) => console.error("Error deleting file via API:", err));
+  //   }
+  // };
+
   const handleDeleteFile = (filename) => {
+    if (!files[filename]) {
+      console.warn(
+        "Tried to delete a file that doesn't exist locally:",
+        filename
+      );
+      return;
+    }
+
     if (window.confirm(`Are you sure you want to delete "${filename}"?`)) {
-      // Remove from local state first
+      // 💥 First cleanup Yjs if this file is active
+      if (activeFile === filename) {
+        //cleanupRef.current(); // kill MonacoBinding + Yjs provider
+        try {
+          cleanupRef.current();
+        } catch (err) {
+          console.warn("Cleanup failed:", err);
+        }
+      }
+
+      // 💥 Immediately prevent editor from trying to re-render the deleted file
+      setActiveFile((prev) => (prev === filename ? "" : prev));
+
+      // Update local state
       setFiles((prevFiles) => {
         const updated = { ...prevFiles };
         delete updated[filename];
-
-        // Update active file if deleted
-        if (activeFile === filename) {
-          const remaining = Object.keys(updated);
-          setActiveFile(remaining.length ? remaining[0] : "");
-        }
-
         return updated;
       });
 
-      // Emit socket event for real-time notification to other users
+      // Emit socket event
       socket.emit("file-deleted", {
         repoCode,
         filePath: filename,
       });
 
-      // Also delete through REST API as a backup
+      // Delete via API
       const token = localStorage.getItem("authToken");
       fetch(`${BASE_URL}/api/files/${repoCode}`, {
         method: "DELETE",
@@ -410,7 +415,7 @@ const Workspace = () => {
           headers: {
             Authorization:
               "Bearer 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",
-              // `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
+            // `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -438,55 +443,55 @@ const Workspace = () => {
     }
   };
 
-  const MarkdownRenderer = ({content}) => {
+  const MarkdownRenderer = ({ content }) => {
     return (
       <ReactMarkdown
         components={{
           code({ node, inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '');
-  
+            const match = /language-(\w+)/.exec(className || "");
+
             const handleCopy = () => {
               try {
                 const text = String(children);
-                const textArea = document.createElement('textarea');
+                const textArea = document.createElement("textarea");
                 textArea.value = text;
                 document.body.appendChild(textArea);
                 textArea.select();
-                document.execCommand('copy');
+                document.execCommand("copy");
                 document.body.removeChild(textArea);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               } catch (err) {
-                console.error('Copy failed:', err);
+                console.error("Copy failed:", err);
               }
-            };            
-  
+            };
+
             return !inline && match ? (
               <div
                 className="code-block-wrapper"
-                style={{ position: 'relative' }}
+                style={{ position: "relative" }}
                 onMouseEnter={() => setIsHoveringCopy(true)}
                 onMouseLeave={() => setIsHoveringCopy(false)}
               >
                 <button
                   onClick={handleCopy}
                   style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    background: '#333',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    cursor: 'pointer',
-                    fontSize: '10 px',
+                    position: "absolute",
+                    top: "8px",
+                    right: "8px",
+                    background: "#333",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "4px 8px",
+                    cursor: "pointer",
+                    fontSize: "10 px",
                     zIndex: 10,
                     opacity: isHoveringCopy ? 1 : 0,
-                    transition: 'opacity 0.2s ease-in-out',
+                    transition: "opacity 0.2s ease-in-out",
                   }}
                 >
-                  {copied ? 'Copied!' : 'Copy'}
+                  {copied ? "Copied!" : "Copy"}
                 </button>
                 <SyntaxHighlighter
                   style={atomDark}
@@ -494,7 +499,7 @@ const Workspace = () => {
                   PreTag="div"
                   {...props}
                 >
-                  {String(children).replace(/\n$/, '')}
+                  {String(children).replace(/\n$/, "")}
                 </SyntaxHighlighter>
               </div>
             ) : (
@@ -587,7 +592,7 @@ const Workspace = () => {
     if (activePanel === "chat") {
       return (
         <div className="chat-box">
-        <h3>Team Chat</h3>
+          <h3>Team Chat</h3>
           <div className="chat-messages">
             {chatMessages.map((msg, idx) => {
               const currentUser =
@@ -715,14 +720,10 @@ const Workspace = () => {
                     msg.role === "user" ? "user" : "assistant"
                   }`}
                 >
-                <MarkdownRenderer content={msg.content} />
+                  <MarkdownRenderer content={msg.content} />
                 </div>
               ))}
-              {loadingAI && (
-                <div className="ai-loading">
-                  Loading...
-                </div>
-              )}
+              {loadingAI && <div className="ai-loading">Loading...</div>}
             </div>
             <textarea
               className="ai-input"
@@ -810,85 +811,331 @@ const Workspace = () => {
     }).catch((err) => console.error("Failed to save code:", err));
   }, 500);
 
+  // 1) a ref to call the latest cleanup
+  const cleanupRef = useRef(() => {});
+  // 2) remember which file we last mounted
+  const lastFileRef = useRef(null);
+
   const setupEditorWithYjs = (editor, filename) => {
-    if (!editor || !filename || !repoCode) return;
+    // only tear down if we’re switching filenames
+    if (lastFileRef.current !== filename) {
+      //cleanupRef.current();
+      try {
+        cleanupRef.current();
+      } catch (err) {
+        console.warn("Cleanup failed:", err);
+      }
 
-    editorRef.current = editor;
-
-    // Create a new Y.Doc instance if one doesn't exist
-    if (!ydocRef.current) {
-      ydocRef.current = new Y.Doc();
+      lastFileRef.current = filename;
     }
 
-    // Clean up previous provider if it exists
-    if (providerRef.current) {
-      providerRef.current.destroy();
+    // bail out if missing
+    if (!editor || !filename || !repoCode) {
+      return;
     }
 
-    // Create a new websocket provider
-    const websocketUrl = process.env.REACT_APP_YJS_WS_URL;
+    // ─── CREATE FRESH YDOC + PROVIDER + BINDING ────────────────────────────
+    const ydoc = new Y.Doc();
+    ydocRef.current = ydoc;
+
+    const WS_URL =
+      (process.env.REACT_APP_YJS_WS_URL || BASE_URL).replace(/^http/, "ws") +
+      "/yjs";
 
     const roomName = `${repoCode}-${filename}`;
-    console.log("🛰  Yjs connecting to", websocketUrl, "room", roomName);
+    const provider = new WebsocketProvider(WS_URL, roomName, ydoc);
+    providerRef.current = provider;
 
-    providerRef.current = new WebsocketProvider(
-      websocketUrl,
-      roomName,
-      ydocRef.current
-    );
-
-    if (!providerRef.current) {
-      console.error("Failed to create Yjs provider");
-      return;
-    } else {
-      console.log("Yjs provider created successfully");
+    const ytext = ydoc.getText(filename);
+    // Inject the boilerplate only if Yjs text is empty
+    if (newlyCreatedRef.current[filename] && files[filename]) {
+      ytext.insert(0, files[filename]); // only insert once
+      delete newlyCreatedRef.current[filename];
     }
 
-    // Get or create text for the file
-    const ytext = ydocRef.current.getText(filename);
-
-    // Bind Monaco editor to Yjs
     const binding = new MonacoBinding(
       ytext,
-      editorRef.current.getModel(),
-      new Set([editorRef.current]),
-      providerRef.current.awareness
+      editor.getModel(),
+      new Set([editor]),
+      provider.awareness
     );
-
-    // Store binding for cleanup
     bindingsRef.current[filename] = binding;
 
-    // Setup periodic save
+    // ─── WATCH FOR CONTENT CHANGES ─────────────────────────────────────────
     const handleContentChange = () => {
-      const content = editor.getValue();
-      // Update files state
-      setFiles((prev) => ({
-        ...prev,
-        [filename]: content,
-      }));
-
-      // Save to server periodically
-      saveFileContent(filename, content);
-    };
-
-    // Add change listener
-    const disposable = editor.onDidChangeModelContent(() => {
-      handleContentChange(); // Call the handleContentChange function
-    });
-
-    // Setup connection status event
-    providerRef.current.on("status", (event) => {
-      console.log(`Yjs connection status for ${filename}: ${event.status}`);
-    });
-
-    return () => {
-      disposable.dispose();
-      if (bindingsRef.current[filename]) {
-        bindingsRef.current[filename].destroy();
-        delete bindingsRef.current[filename];
+      const newContent = editor.getValue();
+      if (files[filename] !== newContent) {
+        setFiles((prev) => ({ ...prev, [filename]: newContent }));
+        saveFileContent(filename, newContent);
       }
     };
+
+    const disposable = editor.onDidChangeModelContent(handleContentChange);
+
+    // optional status logging
+    provider.on("status", ({ status }) => {
+      console.log(`Yjs ${status} for ${filename}`);
+    });
+
+    // ─── CLEANUP FUNCTION ───────────────────────────────────────────────────
+    // const cleanup = () => {
+    //   // stop listening
+    //   disposable.dispose();
+
+    //   // destroy binding
+    //   binding.destroy();
+    //   delete bindingsRef.current[filename];
+
+    //   // destroy provider & doc
+    //   provider.destroy();
+    //   ydoc.destroy();
+    // };
+    const cleanup = () => {
+      try {
+        disposable.dispose();
+
+        if (bindingsRef.current[filename]) {
+          bindingsRef.current[filename].destroy();
+          delete bindingsRef.current[filename];
+        }
+
+        provider?.destroy();
+        ydoc?.destroy();
+      } catch (err) {
+        console.warn("Cleanup failed:", err);
+      }
+    };
+
+    cleanupRef.current = cleanup;
+    return cleanup;
   };
+
+  // const cleanupRef = useRef(() => {});
+  // // at the top of your component
+
+  // // …
+
+  // const setupEditorWithYjs = (editor, filename) => {
+  //   // 1) if anything’s missing, run last cleanup and bail
+  //   cleanupRef.current();
+  //   if (!editor || !filename || !repoCode) return;
+
+  //   // ─── CREATE FRESH YDOC + PROVIDER + BINDING ────────────────────────────
+
+  //   const ydoc = new Y.Doc();
+  //   ydocRef.current = ydoc;
+
+  //   // build your WS URL (fall back to BASE_URL)
+  //   const WS_URL =
+  //     (process.env.REACT_APP_YJS_WS_URL || BASE_URL).replace(/^http/, "ws") +
+  //     "/yjs";
+  //   const roomName = `${repoCode}-${filename}`;
+
+  //   const provider = new WebsocketProvider(WS_URL, roomName, ydoc);
+  //   providerRef.current = provider;
+  //   console.log("Yjs provider created successfully");
+
+  //   // bind the shared text
+  //   const ytext = ydoc.getText(filename);
+  //   const binding = new MonacoBinding(
+  //     ytext,
+  //     editor.getModel(),
+  //     new Set([editor]),
+  //     provider.awareness
+  //   );
+  //   // keep one binding per file so you can tear it down later
+  //   bindingsRef.current[filename] = binding;
+
+  //   // when the user types, mirror back to your app state and server
+  //   const handleContentChange = () => {
+  //     const content = editor.getValue();
+  //     setFiles((f) => ({ ...f, [filename]: content }));
+  //     saveFileContent(filename, content);
+  //   };
+  //   const disposable = editor.onDidChangeModelContent(handleContentChange);
+
+  //   // optional: log status
+  //   provider.on("status", ({ status }) =>
+  //     console.log(`Yjs status for ${filename}: ${status}`)
+  //   );
+
+  //   // ─── BUILD AND STORE THE CLEANUP FUNCTION ──────────────────────────────
+  //   const cleanup = () => {
+  //     disposable.dispose();
+  //     // destroy only this file’s binding
+  //     binding.destroy();
+  //     delete bindingsRef.current[filename];
+  //     // tear down provider + doc
+  //     provider.destroy();
+  //     ydoc.destroy();
+  //   };
+  //   cleanupRef.current = cleanup;
+
+  //   // return cleanup in case React wants it
+  //   return cleanup;
+  // };
+
+  // const setupEditorWithYjs = (editor, filename) => {
+  //   if (!editor || !filename || !repoCode) {
+  //     // no-op cleanup
+  //     cleanupRef.current();
+  //     return;
+  //   }
+
+  //   // ─── TEAR DOWN ANY PREVIOUS YJS STATE ─────────────────────────────────
+
+  //   // 1) destroy all old MonacoBindings
+  //   Object.values(bindingsRef.current).forEach((b) => b.destroy());
+  //   bindingsRef.current = {};
+
+  //   // 2) destroy old provider
+  //   providerRef.current?.destroy();
+  //   providerRef.current = null;
+
+  //   // 3) destroy old Y.Doc
+  //   ydocRef.current?.destroy();
+  //   ydocRef.current = null;
+
+  //   // ─── CREATE FRESH YDOC + PROVIDER + BINDING ────────────────────────────
+
+  //   // Create new Y.Doc
+  //   const ydoc = new Y.Doc();
+  //   ydocRef.current = ydoc;
+
+  //   // Build your WS URL (falls back to BASE_URL if env var is missing)
+  //   const WS_URL =
+  //     (process.env.REACT_APP_YJS_WS_URL || BASE_URL).replace(/^http/, "ws") +
+  //     "/yjs";
+
+  //   // Room name is repoCode + filename
+  //   const roomName = `${repoCode}-${filename}`;
+
+  //   // Create the WebsocketProvider
+  //   providerRef.current = new WebsocketProvider(WS_URL, roomName, ydoc);
+
+  //   if (!providerRef.current) {
+  //     console.error("Failed to create Yjs provider");
+  //     return () => {};
+  //   }
+  //   console.log("Yjs provider created successfully");
+
+  //   // Get (or create) the shared text type, bind to Monaco
+  //   const ytext = ydoc.getText(filename);
+  //   const binding = new MonacoBinding(
+  //     ytext,
+  //     editor.getModel(),
+  //     new Set([editor]),
+  //     providerRef.current.awareness
+  //   );
+  //   bindingsRef.current[filename] = binding;
+
+  //   // ─── WATCH FOR CONTENT CHANGES TO SYNC BACK TO SERVER ─────────────────
+
+  //   const handleContentChange = () => {
+  //     const content = editor.getValue();
+  //     setFiles((prev) => ({ ...prev, [filename]: content }));
+  //     saveFileContent(filename, content);
+  //   };
+  //   const disposable = editor.onDidChangeModelContent(handleContentChange);
+
+  //   // ─── OPTIONAL: LOG CONNECTION STATUS ───────────────────────────────────
+
+  //   providerRef.current.on("status", ({ status }) => {
+  //     console.log(`Yjs connection status for ${filename}: ${status}`);
+  //   });
+
+  //   // ─── RETURN A CLEANUP FUNCTION ─────────────────────────────────────────
+
+  //   return () => {
+  //     // stop listening to editor changes
+  //     disposable.dispose();
+
+  //     // destroy this file’s binding
+  //     if (bindingsRef.current[filename]) {
+  //       bindingsRef.current[filename].destroy();
+  //       delete bindingsRef.current[filename];
+  //     }
+
+  //     // destroy provider & doc
+  //     providerRef.current?.destroy();
+  //     providerRef.current = null;
+  //     ydocRef.current?.destroy();
+  //     ydocRef.current = null;
+  //   };
+  // };
+
+  // const setupEditorWithYjs = (editor, filename) => {
+  //   if (!editor || !filename || !repoCode) return;
+  //   // 2) destroy old provider
+  //   if (providerRef.current) {
+  //     providerRef.current.destroy();
+  //   }
+
+  //   // 3) destroy old Y.Doc and start fresh
+  //   if (ydocRef.current) {
+  //     ydocRef.current.destroy();
+  //   }
+  //   const ydoc = new Y.Doc();
+  //   ydocRef.current = ydoc;
+
+  //   // now create your new provider & binding
+  //   // const WS_URL =
+  //   //   (process.env.REACT_APP_YJS_WS_URL || BASE_URL).replace(/^http/, "ws") +
+  //   //   "/yjs";
+  //   const roomName = `${repoCode}-${filename}`;
+  //   providerRef.current = new WebsocketProvider(
+  //     process.env.REACT_APP_YJS_WS_URL,
+  //     //WS_URL,
+  //     roomName,
+  //     ydoc
+  //   );
+
+  //   if (!providerRef.current) {
+  //     console.error("Failed to create Yjs provider");
+  //     return;
+  //   } else {
+  //     console.log("Yjs provider created successfully");
+  //   }
+  //   const ytext = ydoc.getText(filename);
+  //   const binding = new MonacoBinding(
+  //     ytext,
+  //     editor.getModel(),
+  //     new Set([editor]),
+  //     providerRef.current.awareness
+  //   );
+  //   bindingsRef.current[filename] = binding;
+
+  //   // Setup periodic save
+  //   const handleContentChange = () => {
+  //     const content = editor.getValue();
+  //     // Update files state
+  //     setFiles((prev) => ({
+  //       ...prev,
+  //       [filename]: content,
+  //     }));
+
+  //     // Save to server periodically
+  //     saveFileContent(filename, content);
+  //   };
+
+  //   // Add change listener
+  //   const disposable = editor.onDidChangeModelContent(() => {
+  //     handleContentChange(); // Call the handleContentChange function
+  //   });
+
+  //   // Setup connection status event
+  //   providerRef.current.on("status", (event) => {
+  //     console.log(`Yjs connection status for ${filename}: ${event.status}`);
+  //   });
+
+  //   return () => {
+  //     disposable.dispose();
+  //     if (bindingsRef.current[filename]) {
+  //       bindingsRef.current[filename].destroy();
+  //       delete bindingsRef.current[filename];
+  //     }
+  //   };
+  // };
 
   const currentRoomRef = useRef(null); // track the current joined room
   useEffect(() => {
@@ -899,12 +1146,62 @@ const Workspace = () => {
     if (currentRoomRef.current && currentRoomRef.current !== repoCode) {
       socket.emit("leave-room", currentRoomRef.current);
     }
+    const token = localStorage.getItem("authToken");
+
+    // ----------
+
+    // ... existing code ...
+
+    // Chat-specific socket event listeners
+    socket.on("new-message", (message) => {
+      setChatMessages((prevMessages) => [...prevMessages, message]);
+    });
+
+    //--------------
 
     currentRoomRef.current = repoCode;
     socket.emit("join-room", repoCode, username);
 
+    //------------------o--------------------
+    socket.on("chat-history", (messages) => {
+      setChatMessages(messages);
+    });
+
+    socket.on("chat-error", ({ error }) => {
+      console.error("Chat error:", error);
+      // Optionally display an error to the user
+    });
+
+    // Fetch repository information
+
+    fetch(`${BASE_URL}/api/repos/${repoCode}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.repository) {
+          setRepoInfo({
+            name: data.repository.name || "Unnamed Repository",
+            code: repoCode,
+            password: "********", // Keep password hidden
+          });
+        } else {
+          console.error(
+            "Failed to fetch repository info:",
+            data.message || "Unknown error"
+          );
+          setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading repository information:", err);
+        setRepoInfo((prev) => ({ ...prev, name: "Error loading name" })); // Fallback
+      });
+    //------------------o--------------------
+
     // Load files from database on mount
-    const token = localStorage.getItem("authToken");
     fetch(`${BASE_URL}/api/files/${repoCode}`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -1005,6 +1302,17 @@ const Workspace = () => {
       socket.off("file-deleted");
       socket.off("update-users");
       socket.off("initial-files");
+      socket.emit("leave-room", repoCode);
+      socket.off("new-message");
+      socket.off("chat-history");
+      socket.off("chat-error");
+      try {
+        cleanupRef.current();
+      } catch (err) {
+        console.warn("Cleanup failed:", err);
+      }
+
+      // cleanupRef.current();
       // Clean up Yjs bindings
       Object.values(bindingsRef.current).forEach((binding) => {
         if (binding && binding.destroy) binding.destroy();
@@ -1076,10 +1384,14 @@ const Workspace = () => {
           <div className="editor-pane">
             {activeFile in files ? (
               <Editor
+                key={activeFile}
                 language={getLanguageFromFilename(activeFile)}
                 value={files[activeFile] || ""}
                 //onChange={handleEditorChange}
-                onMount={(editor) => setupEditorWithYjs(editor, activeFile)}
+                // onMount={(editor) => setupEditorWithYjs(editor, activeFile)}
+                onMount={(editor) => {
+                  setTimeout(() => setupEditorWithYjs(editor, activeFile), 50);
+                }}
                 theme="vs-dark"
                 options={{
                   fontSize: 16,
