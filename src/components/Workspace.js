@@ -370,7 +370,7 @@ const Workspace = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "deepseek/deepseek-chat-v3-0324:free", // Replace with your chosen model
+            model: "deepseek/deepseek-r1:free", // Replace with your chosen model
             messages: [...aiMessages, userMessage],
           }),
         }
