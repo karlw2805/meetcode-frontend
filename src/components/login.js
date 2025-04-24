@@ -113,7 +113,7 @@ const Login = () => {
     <div className="login-page">
       {/* Left Side: Form */}
       <form className="login-left" onSubmit={handleLogin}>
-        <h1>Hey ! Welcome coder 🎀</h1>
+        <h1>Hey, Welcome Coder!</h1>
         <input
           type="text"
           className="login-input"
