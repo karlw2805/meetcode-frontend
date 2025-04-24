@@ -163,8 +163,39 @@ const Home = () => {
           <h2>Your Repositories</h2>
           <ul>
             {repos.map((repo, idx) => (
-              <li key={idx}>
-                <strong>{repo.repoName}</strong> — Code: {repo.repoCode}
+              <li key={idx} className="repo-item">
+                <div className="repo-details">
+                  <strong>{repo.repoName}</strong> — Code: {repo.repoCode}
+                </div>
+                <button
+                  className="join-btn"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`${BASE_URL}/api/repos/join`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: "Bearer " + localStorage.getItem("authToken"),
+                        },
+                        body: JSON.stringify({
+                          joinCode: repo.repoCode,
+                          joinPassword: repo.roomPassword || "", // or prompt the user if password is required
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        localStorage.setItem("joinedRepoCode", data.repoCode);
+                        navigate(`/workspace/${data.repoName}`);
+                      } else {
+                        alert("Error joining room: " + data.message);
+                      }
+                    } catch (err) {
+                      alert("Error joining room.");
+                    }
+                  }}
+                >
+                  Join
+                </button>
               </li>
             ))}
           </ul>
