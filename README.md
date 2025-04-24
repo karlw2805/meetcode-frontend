@@ -1,70 +1,35 @@
-# Getting Started with Create React App
+# Getting Started with MeetCode App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the repository containing the code for the Front End part of the project.
 
-## Available Scripts
+## Steps to Run the Project.
 
-In the project directory, you can run:
+To run the MeetCode app, follow these steps:
 
-### `npm start`
+### 1. Download the code from both the front end and back end repositories.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Download the code from this repository and [the backend repository](https://github.com/krishsingla06/meetcode-backend).
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 2. Changes in the `env` file of both the folders.
 
-### `npm test`
+Search the env files in both the front end and back end code folders. Search for `REACT_APP_API_URL` and `REACT_APP_YJS_WS_URL` in the env file of front end code, and `FRONTEND_URL` in the env file of back end code.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Replace `10.61.21.64` with your IP address.
 
-### `npm run build`
+To get your IP address, 
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+On Windows: Go to the Command Prompt and run the command `ipconfig`. Look for IPv4 Address under your network adapter (usually something like `192.168.x.x`).
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+On macOS: Open the terminal and type `ipconfig getifaddr en0`.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 3. Run these commands in the terminal.
 
-### `npm run eject`
+Open the front end and back end code in the editor. Run the following commands in both the terminals.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+`npm i --legacy-peer-deps`
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+`npm start`
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+This will open the `localhost` link in your web browser.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Instead of the localhost, run the link `https://{IP_Add}:3000` in the browser. (Replace `IP_Add` with the IP Address of your device.)
