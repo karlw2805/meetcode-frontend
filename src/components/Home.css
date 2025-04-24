@@ -8,6 +8,7 @@
 }
 
 .logo-icon {
+  font-weight: bold;
   font-family: 'Courier New', Courier, monospace;
   font-size: 5rem;
   color: #00ffae;
