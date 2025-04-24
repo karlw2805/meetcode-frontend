@@ -18,10 +18,14 @@ const socket = io(process.env.REACT_APP_API_URL, {
 });
 
 const defaultCodeTemplates = {
-  javascript: 'console.log("Hello from JS!");',
-  python: 'print("Hello from Python!")',
-  cpp: '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "Hello from C++!" << endl;\n  return 0;\n}',
-  html: "<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n  <h1>Hello HTML</h1>\n</body>\n</html>",
+  // javascript: 'console.log("Hello from JS!");',
+  // python: 'print("Hello from Python!")',
+  // cpp: '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "Hello from C++!" << endl;\n  return 0;\n}',
+  // html: "<!DOCTYPE html>\n<html>\n<head><title>New Page</title></head>\n<body>\n  <h1>Hello HTML</h1>\n</body>\n</html>",
+  javascript: "",
+  python: "",
+  cpp: "",
+  html: "",
 };
 
 const repoCode = localStorage.getItem("joinedRepoCode");
@@ -110,10 +114,7 @@ const Workspace = () => {
     const fullFileName = newFileName + extension;
     newlyCreatedRef.current[fullFileName] = true;
 
-    console.log("newFileLang", newFileLang);
-
     const content = defaultCodeTemplates[newFileLang] || "";
-    console.log("content", content);
 
     // Update local state
     const updated = { ...files, [fullFileName]: content };
@@ -123,7 +124,7 @@ const Workspace = () => {
     setNewFileName("");
     setNewFileLang("javascript");
 
-    // 🔄 Real-time file broadcast via socket
+    // Emit socket event to notify other users
     socket.emit("file-created", {
       repoCode,
       file: fullFileName,
@@ -144,6 +145,7 @@ const Workspace = () => {
       }),
     }).catch((err) => console.error("Error saving file:", err));
   };
+
   const [chatMessages, setChatMessages] = useState([
     {
       username: "System",
@@ -286,18 +288,23 @@ const Workspace = () => {
   };
 
   const handleDeleteFile = (filename) => {
-    if (!files[filename]) {
+    // if (!files[filename]) {
+    //   console.warn(
+    //     `Tried to delete a file that doesn't exist locally: ${filename}`
+    //   );
+    //   return;
+    // }
+
+    if (!(filename in files)) {
       console.warn(
-        "Tried to delete a file that doesn't exist locally:",
-        filename
+        `Tried to delete a file that doesn't exist locally: ${filename}`
       );
       return;
     }
 
     if (window.confirm(`Are you sure you want to delete "${filename}"?`)) {
-      // 💥 First cleanup Yjs if this file is active
+      // Cleanup Yjs if this file is active
       if (activeFile === filename) {
-        //cleanupRef.current(); // kill MonacoBinding + Yjs provider
         try {
           cleanupRef.current();
         } catch (err) {
@@ -305,8 +312,8 @@ const Workspace = () => {
         }
       }
 
-      // 💥 Immediately prevent editor from trying to re-render the deleted file
-      setActiveFile((prev) => (prev === filename ? "" : prev));
+      // Immediately prevent editor from trying to re-render the deleted file
+      setActiveFile((prev) => (prev === filename ? null : prev));
 
       // Update local state
       setFiles((prevFiles) => {
@@ -364,8 +371,8 @@ const Workspace = () => {
         {
           method: "POST",
           headers: {
-            Authorization:
-              "Bearer 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",
+            Authorization: `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
+
             // `Bearer ${process.env.REACT_APP_OPENROUTER_API_KEY}`,
             "Content-Type": "application/json",
           },
@@ -572,25 +579,6 @@ const Workspace = () => {
               );
             })}
           </div>
-          {/* <h3>Team Chat</h3>
-          <div className="chat-messages">
-            {chatMessages.map((msg, idx) => (
-              <div key={idx} className="chat-message">
-                <span className="chat-username">
-                  {msg.username || "Anonymous"}:{" "}
-                </span>
-                <span className="chat-text">{msg.message}</span>
-                {msg.timestamp && (
-                  <div className="chat-timestamp">
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div> */}
           <div className="chat-input-row">
             <input
               type="text"
@@ -736,31 +724,6 @@ const Workspace = () => {
       </div>
     );
   };
-
-  const handleEditorChange = debounce((value) => {
-    const updatedFiles = { ...files, [activeFile]: value };
-    setFiles(updatedFiles);
-
-    socket.emit("code-change", {
-      repoCode,
-      filename: activeFile,
-      code: value,
-    });
-
-    const token = localStorage.getItem("authToken");
-
-    fetch(`${BASE_URL}/api/files/${repoCode}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        filename: activeFile,
-        content: value,
-      }),
-    }).catch((err) => console.error("Failed to save code:", err));
-  }, 500);
 
   // 1) a ref to call the latest cleanup
   const cleanupRef = useRef(() => {});
@@ -921,7 +884,7 @@ const Workspace = () => {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.files) {
-          setFiles(data.files);
+          setFiles(data.files); // Ensure all files are added to the state
           // Set active file to the first file if no active file is set
           if (!activeFile || !(activeFile in data.files)) {
             const fileKeys = Object.keys(data.files);
