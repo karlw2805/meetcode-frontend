@@ -285,55 +285,6 @@ const Workspace = () => {
     setIsRunning(false);
   };
 
-  // const handleDeleteFile = (filename) => {
-  //   if (!files[filename]) {
-  //     console.warn(
-  //       "Tried to delete a file that doesn't exist locally:",
-  //       filename
-  //     );
-  //     return;
-  //   }
-
-  //   if (window.confirm(`Are you sure you want to delete "${filename}"?`)) {
-  //     // Remove from local state first
-  //     setFiles((prevFiles) => {
-  //       const updated = { ...prevFiles };
-  //       delete updated[filename];
-
-  //       // Update active file if deleted
-  //       if (activeFile === filename) {
-  //         const remaining = Object.keys(updated);
-  //         setActiveFile(remaining.length ? remaining[0] : "");
-  //       }
-
-  //       return updated;
-  //     });
-
-  //     // Emit socket event for real-time notification to other users
-  //     socket.emit("file-deleted", {
-  //       repoCode,
-  //       filePath: filename,
-  //     });
-
-  //     // Also delete through REST API as a backup
-  //     const token = localStorage.getItem("authToken");
-  //     fetch(`${BASE_URL}/api/files/${repoCode}`, {
-  //       method: "DELETE",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //       body: JSON.stringify({ filename }),
-  //     })
-  //       .then((response) => {
-  //         if (!response.ok) {
-  //           console.error("Failed to delete file via API", response.status);
-  //         }
-  //       })
-  //       .catch((err) => console.error("Error deleting file via API:", err));
-  //   }
-  // };
-
   const handleDeleteFile = (filename) => {
     if (!files[filename]) {
       console.warn(
@@ -710,7 +661,7 @@ const Workspace = () => {
     if (activePanel === "ai-assistance") {
       return (
         <div className="ai-assistance-panel">
-          <h3>AI Assistance </h3>
+          <h3>AI Assistance 🤖</h3>
           <div className="ai-chatbox">
             <div className="ai-messages">
               {aiMessages.map((msg, idx) => (
@@ -877,19 +828,6 @@ const Workspace = () => {
       console.log(`Yjs ${status} for ${filename}`);
     });
 
-    // ─── CLEANUP FUNCTION ───────────────────────────────────────────────────
-    // const cleanup = () => {
-    //   // stop listening
-    //   disposable.dispose();
-
-    //   // destroy binding
-    //   binding.destroy();
-    //   delete bindingsRef.current[filename];
-
-    //   // destroy provider & doc
-    //   provider.destroy();
-    //   ydoc.destroy();
-    // };
     const cleanup = () => {
       try {
         disposable.dispose();
@@ -909,233 +847,6 @@ const Workspace = () => {
     cleanupRef.current = cleanup;
     return cleanup;
   };
-
-  // const cleanupRef = useRef(() => {});
-  // // at the top of your component
-
-  // // …
-
-  // const setupEditorWithYjs = (editor, filename) => {
-  //   // 1) if anything’s missing, run last cleanup and bail
-  //   cleanupRef.current();
-  //   if (!editor || !filename || !repoCode) return;
-
-  //   // ─── CREATE FRESH YDOC + PROVIDER + BINDING ────────────────────────────
-
-  //   const ydoc = new Y.Doc();
-  //   ydocRef.current = ydoc;
-
-  //   // build your WS URL (fall back to BASE_URL)
-  //   const WS_URL =
-  //     (process.env.REACT_APP_YJS_WS_URL || BASE_URL).replace(/^http/, "ws") +
-  //     "/yjs";
-  //   const roomName = `${repoCode}-${filename}`;
-
-  //   const provider = new WebsocketProvider(WS_URL, roomName, ydoc);
-  //   providerRef.current = provider;
-  //   console.log("Yjs provider created successfully");
-
-  //   // bind the shared text
-  //   const ytext = ydoc.getText(filename);
-  //   const binding = new MonacoBinding(
-  //     ytext,
-  //     editor.getModel(),
-  //     new Set([editor]),
-  //     provider.awareness
-  //   );
-  //   // keep one binding per file so you can tear it down later
-  //   bindingsRef.current[filename] = binding;
-
-  //   // when the user types, mirror back to your app state and server
-  //   const handleContentChange = () => {
-  //     const content = editor.getValue();
-  //     setFiles((f) => ({ ...f, [filename]: content }));
-  //     saveFileContent(filename, content);
-  //   };
-  //   const disposable = editor.onDidChangeModelContent(handleContentChange);
-
-  //   // optional: log status
-  //   provider.on("status", ({ status }) =>
-  //     console.log(`Yjs status for ${filename}: ${status}`)
-  //   );
-
-  //   // ─── BUILD AND STORE THE CLEANUP FUNCTION ──────────────────────────────
-  //   const cleanup = () => {
-  //     disposable.dispose();
-  //     // destroy only this file’s binding
-  //     binding.destroy();
-  //     delete bindingsRef.current[filename];
-  //     // tear down provider + doc
-  //     provider.destroy();
-  //     ydoc.destroy();
-  //   };
-  //   cleanupRef.current = cleanup;
-
-  //   // return cleanup in case React wants it
-  //   return cleanup;
-  // };
-
-  // const setupEditorWithYjs = (editor, filename) => {
-  //   if (!editor || !filename || !repoCode) {
-  //     // no-op cleanup
-  //     cleanupRef.current();
-  //     return;
-  //   }
-
-  //   // ─── TEAR DOWN ANY PREVIOUS YJS STATE ─────────────────────────────────
-
-  //   // 1) destroy all old MonacoBindings
-  //   Object.values(bindingsRef.current).forEach((b) => b.destroy());
-  //   bindingsRef.current = {};
-
-  //   // 2) destroy old provider
-  //   providerRef.current?.destroy();
-  //   providerRef.current = null;
-
-  //   // 3) destroy old Y.Doc
-  //   ydocRef.current?.destroy();
-  //   ydocRef.current = null;
-
-  //   // ─── CREATE FRESH YDOC + PROVIDER + BINDING ────────────────────────────
-
-  //   // Create new Y.Doc
-  //   const ydoc = new Y.Doc();
-  //   ydocRef.current = ydoc;
-
-  //   // Build your WS URL (falls back to BASE_URL if env var is missing)
-  //   const WS_URL =
-  //     (process.env.REACT_APP_YJS_WS_URL || BASE_URL).replace(/^http/, "ws") +
-  //     "/yjs";
-
-  //   // Room name is repoCode + filename
-  //   const roomName = `${repoCode}-${filename}`;
-
-  //   // Create the WebsocketProvider
-  //   providerRef.current = new WebsocketProvider(WS_URL, roomName, ydoc);
-
-  //   if (!providerRef.current) {
-  //     console.error("Failed to create Yjs provider");
-  //     return () => {};
-  //   }
-  //   console.log("Yjs provider created successfully");
-
-  //   // Get (or create) the shared text type, bind to Monaco
-  //   const ytext = ydoc.getText(filename);
-  //   const binding = new MonacoBinding(
-  //     ytext,
-  //     editor.getModel(),
-  //     new Set([editor]),
-  //     providerRef.current.awareness
-  //   );
-  //   bindingsRef.current[filename] = binding;
-
-  //   // ─── WATCH FOR CONTENT CHANGES TO SYNC BACK TO SERVER ─────────────────
-
-  //   const handleContentChange = () => {
-  //     const content = editor.getValue();
-  //     setFiles((prev) => ({ ...prev, [filename]: content }));
-  //     saveFileContent(filename, content);
-  //   };
-  //   const disposable = editor.onDidChangeModelContent(handleContentChange);
-
-  //   // ─── OPTIONAL: LOG CONNECTION STATUS ───────────────────────────────────
-
-  //   providerRef.current.on("status", ({ status }) => {
-  //     console.log(`Yjs connection status for ${filename}: ${status}`);
-  //   });
-
-  //   // ─── RETURN A CLEANUP FUNCTION ─────────────────────────────────────────
-
-  //   return () => {
-  //     // stop listening to editor changes
-  //     disposable.dispose();
-
-  //     // destroy this file’s binding
-  //     if (bindingsRef.current[filename]) {
-  //       bindingsRef.current[filename].destroy();
-  //       delete bindingsRef.current[filename];
-  //     }
-
-  //     // destroy provider & doc
-  //     providerRef.current?.destroy();
-  //     providerRef.current = null;
-  //     ydocRef.current?.destroy();
-  //     ydocRef.current = null;
-  //   };
-  // };
-
-  // const setupEditorWithYjs = (editor, filename) => {
-  //   if (!editor || !filename || !repoCode) return;
-  //   // 2) destroy old provider
-  //   if (providerRef.current) {
-  //     providerRef.current.destroy();
-  //   }
-
-  //   // 3) destroy old Y.Doc and start fresh
-  //   if (ydocRef.current) {
-  //     ydocRef.current.destroy();
-  //   }
-  //   const ydoc = new Y.Doc();
-  //   ydocRef.current = ydoc;
-
-  //   // now create your new provider & binding
-  //   // const WS_URL =
-  //   //   (process.env.REACT_APP_YJS_WS_URL || BASE_URL).replace(/^http/, "ws") +
-  //   //   "/yjs";
-  //   const roomName = `${repoCode}-${filename}`;
-  //   providerRef.current = new WebsocketProvider(
-  //     process.env.REACT_APP_YJS_WS_URL,
-  //     //WS_URL,
-  //     roomName,
-  //     ydoc
-  //   );
-
-  //   if (!providerRef.current) {
-  //     console.error("Failed to create Yjs provider");
-  //     return;
-  //   } else {
-  //     console.log("Yjs provider created successfully");
-  //   }
-  //   const ytext = ydoc.getText(filename);
-  //   const binding = new MonacoBinding(
-  //     ytext,
-  //     editor.getModel(),
-  //     new Set([editor]),
-  //     providerRef.current.awareness
-  //   );
-  //   bindingsRef.current[filename] = binding;
-
-  //   // Setup periodic save
-  //   const handleContentChange = () => {
-  //     const content = editor.getValue();
-  //     // Update files state
-  //     setFiles((prev) => ({
-  //       ...prev,
-  //       [filename]: content,
-  //     }));
-
-  //     // Save to server periodically
-  //     saveFileContent(filename, content);
-  //   };
-
-  //   // Add change listener
-  //   const disposable = editor.onDidChangeModelContent(() => {
-  //     handleContentChange(); // Call the handleContentChange function
-  //   });
-
-  //   // Setup connection status event
-  //   providerRef.current.on("status", (event) => {
-  //     console.log(`Yjs connection status for ${filename}: ${event.status}`);
-  //   });
-
-  //   return () => {
-  //     disposable.dispose();
-  //     if (bindingsRef.current[filename]) {
-  //       bindingsRef.current[filename].destroy();
-  //       delete bindingsRef.current[filename];
-  //     }
-  //   };
-  // };
 
   const currentRoomRef = useRef(null); // track the current joined room
   useEffect(() => {
@@ -1221,14 +932,6 @@ const Workspace = () => {
         }
       })
       .catch((err) => console.error("Error loading files:", err));
-
-    // // Setup socket event listeners
-    // socket.on("code-update", ({ filename, code }) => {
-    //   setFiles((prevFiles) => {
-    //     if (prevFiles[filename] === code) return prevFiles;
-    //     return { ...prevFiles, [filename]: code };
-    //   });
-    // });
 
     socket.on("document-saved", ({ filename }) => {
       setDocumentSaved((prev) => ({
@@ -1387,10 +1090,20 @@ const Workspace = () => {
                 key={activeFile}
                 language={getLanguageFromFilename(activeFile)}
                 value={files[activeFile] || ""}
-                //onChange={handleEditorChange}
-                // onMount={(editor) => setupEditorWithYjs(editor, activeFile)}
+                // onMount={(editor) => {
+                //   setTimeout(() => setupEditorWithYjs(editor, activeFile), 50);
+                // }}
                 onMount={(editor) => {
-                  setTimeout(() => setupEditorWithYjs(editor, activeFile), 50);
+                  if (editor.getModel()) {
+                    setTimeout(
+                      () => setupEditorWithYjs(editor, activeFile),
+                      50
+                    );
+                  } else {
+                    editor.onDidCreateModel(() =>
+                      setupEditorWithYjs(editor, activeFile)
+                    );
+                  }
                 }}
                 theme="vs-dark"
                 options={{
