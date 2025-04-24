@@ -972,6 +972,7 @@ const Workspace = () => {
       socket.off("new-message");
       socket.off("chat-history");
       socket.off("chat-error");
+
       try {
         cleanupRef.current();
       } catch (err) {
@@ -1022,7 +1023,7 @@ const Workspace = () => {
       <div className="workspace-main">
         <div className="vertical-toolbar">
           <button title="Files" onClick={() => setActivePanel("files")}>
-            🗂
+            📁
           </button>
           <button title="Chat" onClick={() => setActivePanel("chat")}>
             💬
